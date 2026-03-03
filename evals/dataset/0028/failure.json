@@ -1,0 +1,12 @@
+{
+  "id": "0028",
+  "source": "synthetic",
+  "repo_language": "node",
+  "category": "node_missing_dependency",
+  "description": "Node install fails; treat as missing dependency for minimal support",
+  "policy_profile": "default",
+  "created_at": "2026-01-21",
+  "notes": "synthetic node dependency issue",
+  "public_source_url": null
+}
+

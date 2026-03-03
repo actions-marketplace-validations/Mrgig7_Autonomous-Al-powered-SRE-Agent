@@ -1,0 +1,12 @@
+{
+  "id": "0020",
+  "source": "synthetic",
+  "repo_language": "node",
+  "category": "jest_test_failure",
+  "description": "jest failing due to expectation mismatch",
+  "policy_profile": "default",
+  "created_at": "2026-01-20",
+  "notes": "synthetic jest test failure (unsupported by deterministic patcher)",
+  "public_source_url": null
+}
+

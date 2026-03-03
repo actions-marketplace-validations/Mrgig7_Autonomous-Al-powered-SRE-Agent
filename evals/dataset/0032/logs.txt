@@ -1,0 +1,3 @@
+no required module provides package github.com/acme/foo/bar; to add it:
+	go get github.com/acme/foo/bar
+

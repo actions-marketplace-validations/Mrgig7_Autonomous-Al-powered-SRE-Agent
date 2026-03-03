@@ -1,0 +1,2 @@
+[ERROR] Plugin org.apache.maven.plugins:maven-surefire-plugin:test or one of its dependencies could not be resolved
+

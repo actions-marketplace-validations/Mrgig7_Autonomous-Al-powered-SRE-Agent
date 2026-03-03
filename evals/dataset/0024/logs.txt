@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File \"/workspace/app/config.py\", line 12, in <module>
+    database_url = os.environ[\"DATABASE_URL\"]
+  File \"<frozen os>\", line 679, in __getitem__
+KeyError: 'DATABASE_URL'
+

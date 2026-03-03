@@ -49,10 +49,10 @@ def send_notification_task(
     priority: int = 1,
 ) -> dict[str, Any]:
     """Send a notification asynchronously.
-    
+
     This task is designed to be called from anywhere in the application
     to dispatch notifications without blocking.
-    
+
     Args:
         notification_type: Type of notification (from NotificationType)
         level: Severity level (from NotificationLevel)
@@ -71,17 +71,17 @@ def send_notification_task(
         tags: Additional metadata tags
         channels: Specific channels to notify
         priority: Notification priority (1-5)
-        
+
     Returns:
         Dictionary with send results
     """
     import asyncio
-    
+
     try:
         # Map string enums
         ntype = NotificationType(notification_type)
         nlevel = NotificationLevel(level)
-        
+
         # Build payload
         payload = NotificationPayload(
             type=ntype,
@@ -102,10 +102,10 @@ def send_notification_task(
             channels=channels or [],
             priority=priority,
         )
-        
+
         # Get manager and send
         manager = get_notification_manager()
-        
+
         # Run async send in event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -113,28 +113,25 @@ def send_notification_task(
             results = loop.run_until_complete(manager.send(payload))
         finally:
             loop.close()
-        
+
         # Convert results to serializable format
-        serializable_results = {
-            channel: result.to_dict()
-            for channel, result in results.items()
-        }
-        
+        serializable_results = {channel: result.to_dict() for channel, result in results.items()}
+
         success_count = sum(1 for r in results.values() if r.success)
         total_count = len(results)
-        
+
         logger.info(
             f"Notification {payload.notification_id} sent: "
             f"{success_count}/{total_count} channels succeeded"
         )
-        
+
         return {
             "notification_id": str(payload.notification_id),
             "success_count": success_count,
             "total_count": total_count,
             "results": serializable_results,
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to send notification: {e}")
         raise
@@ -157,13 +154,13 @@ def send_failure_detected_task(
 ) -> dict[str, Any]:
     """Convenience task for failure detection notifications."""
     title = f"CI/CD Failure Detected in {repository}"
-    
+
     suggested_actions = [
         "Review the error logs for root cause",
         "Check recent commits for potential issues",
         "Wait for automated fix generation",
     ]
-    
+
     return send_notification_task.delay(
         notification_type=NotificationType.FAILURE_DETECTED.value,
         level=NotificationLevel.ERROR.value,
@@ -195,11 +192,11 @@ def send_fix_generated_task(
 ) -> dict[str, Any]:
     """Convenience task for fix generation notifications."""
     title = f"Fix Generated for {repository}"
-    
+
     message = f"{fix_summary}\n\nFiles changed: {', '.join(files_changed)}"
-    
+
     level = NotificationLevel.INFO if confidence_score >= 0.8 else NotificationLevel.WARNING
-    
+
     suggested_actions = []
     if confidence_score >= 0.9:
         suggested_actions.append("High confidence - consider auto-approval")
@@ -208,7 +205,7 @@ def send_fix_generated_task(
     else:
         suggested_actions.append("Low confidence - manual review required")
         suggested_actions.append("Consider alternative approaches")
-    
+
     return send_notification_task.delay(
         notification_type=NotificationType.FIX_GENERATED.value,
         level=level.value,
@@ -237,7 +234,7 @@ def send_pr_created_task(
     """Convenience task for PR creation notifications."""
     title = f"Pull Request #{pr_number} Created"
     message = f"PR Title: {pr_title}\n\nA pull request has been created with the automated fix."
-    
+
     return send_notification_task.delay(
         notification_type=NotificationType.PR_CREATED.value,
         level=NotificationLevel.INFO.value,
@@ -272,9 +269,15 @@ def send_sandbox_result_task(
         title = f"Sandbox Validation Failed for {repository}"
         ntype = NotificationType.SANDBOX_FAILED
         level = NotificationLevel.WARNING
-        message = "The automated fix failed sandbox validation. Manual intervention may be required."
-        suggested_actions = ["Review validation output", "Consider manual fix", "Retry with different approach"]
-    
+        message = (
+            "The automated fix failed sandbox validation. Manual intervention may be required."
+        )
+        suggested_actions = [
+            "Review validation output",
+            "Consider manual fix",
+            "Retry with different approach",
+        ]
+
     return send_notification_task.delay(
         notification_type=ntype.value,
         level=level.value,

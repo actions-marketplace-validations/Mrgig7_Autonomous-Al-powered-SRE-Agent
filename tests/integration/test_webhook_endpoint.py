@@ -1,12 +1,11 @@
 """Integration tests for webhook API endpoint."""
-import hashlib
-import hmac
+
 import json
 from typing import Any
 from unittest.mock import patch
 
-import pytest
 from fastapi.testclient import TestClient
+from sre_agent.schemas.repository_config import RepositoryRuntimeConfig
 
 
 class TestGitHubWebhookEndpoint:
@@ -84,12 +83,20 @@ class TestGitHubWebhookEndpoint:
         data = response.json()
         assert data["status"] == "ignored"
 
+    @patch(
+        "sre_agent.api.webhooks.github.PostMergeMonitorService",
+    )
     def test_successful_job_returns_ignored(
         self,
+        mock_monitor_class: Any,
         client: TestClient,
         sample_github_workflow_job_success_payload: dict[str, Any],
     ) -> None:
         """Successful job should be ignored."""
+        from unittest.mock import AsyncMock
+
+        mock_monitor_class.return_value.process_outcome = AsyncMock(return_value=None)
+
         response = client.post(
             "/webhooks/github",
             content=json.dumps(sample_github_workflow_job_success_payload).encode(),
@@ -106,16 +113,26 @@ class TestGitHubWebhookEndpoint:
 
     @patch("sre_agent.api.webhooks.github.EventStore")
     @patch("sre_agent.api.webhooks.github.process_pipeline_event")
+    @patch("sre_agent.services.webhook_delivery_store.WebhookDeliveryStore.record_delivery")
+    @patch(
+        "sre_agent.services.repository_config.RepositoryConfigService.resolve_for_repository",
+    )
+    @patch(
+        "sre_agent.services.github_app_installations.GitHubAppInstallationService.get_by_repo_full_name",
+    )
     def test_failed_job_is_accepted(
         self,
+        mock_get_installation: Any,
+        mock_resolve_config: Any,
+        mock_record_delivery: Any,
         mock_task: Any,
         mock_store_class: Any,
         client: TestClient,
         sample_github_workflow_job_payload: dict[str, Any],
     ) -> None:
         """Failed job should be accepted and processed."""
-        from uuid import uuid4
         from unittest.mock import AsyncMock, MagicMock
+        from uuid import uuid4
 
         # Mock the event store
         mock_event = MagicMock()
@@ -124,6 +141,19 @@ class TestGitHubWebhookEndpoint:
         mock_store.store_event.return_value = (mock_event, True)
         mock_store.update_status = AsyncMock()
         mock_store_class.return_value = mock_store
+        mock_record_delivery.return_value = True
+        mock_get_installation.return_value = MagicMock(
+            installation_id=999,
+            repo_full_name="test-org/test-repo",
+            user_id=uuid4(),
+            automation_mode="suggest",
+        )
+        mock_resolve_config.return_value = RepositoryRuntimeConfig(
+            automation_mode="suggest",
+            protected_paths=[],
+            retry_limit=3,
+            source="installation_default",
+        )
 
         # Mock Celery task
         mock_task.delay = MagicMock()

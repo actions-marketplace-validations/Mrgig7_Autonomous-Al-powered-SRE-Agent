@@ -3,6 +3,7 @@
 GitHub uses HMAC-SHA256 for webhook signature verification.
 Reference: https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries
 """
+
 import hashlib
 import hmac
 import logging

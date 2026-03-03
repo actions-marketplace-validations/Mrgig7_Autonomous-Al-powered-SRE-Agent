@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/workspace/app/main.py", line 1, in <module>
+    import pydantic
+ModuleNotFoundError: No module named 'pydantic'
+

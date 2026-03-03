@@ -3,6 +3,7 @@
 Uses python-json-logger for structured JSON logging suitable for
 log aggregation systems like Loki, ELK, or CloudWatch.
 """
+
 import logging
 import sys
 from contextvars import ContextVar
@@ -14,6 +15,10 @@ from sre_agent.config import get_settings
 
 # Context variable for correlation ID (request-scoped)
 correlation_id_ctx: ContextVar[str | None] = ContextVar("correlation_id", default=None)
+delivery_id_ctx: ContextVar[str | None] = ContextVar("delivery_id", default=None)
+run_id_ctx: ContextVar[str | None] = ContextVar("run_id", default=None)
+run_key_ctx: ContextVar[str | None] = ContextVar("run_key", default=None)
+failure_id_ctx: ContextVar[str | None] = ContextVar("failure_id", default=None)
 
 
 class CorrelationIdFilter(logging.Filter):
@@ -21,6 +26,19 @@ class CorrelationIdFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         record.correlation_id = correlation_id_ctx.get()
+        record.delivery_id = delivery_id_ctx.get() or record.correlation_id
+        record.run_id = run_id_ctx.get()
+        record.run_key = run_key_ctx.get()
+        record.failure_id = failure_id_ctx.get()
+        try:
+            from sre_agent.observability.tracing import get_trace_ids
+
+            trace_id, span_id = get_trace_ids()
+            record.trace_id = trace_id
+            record.span_id = span_id
+        except Exception:
+            record.trace_id = None
+            record.span_id = None
         return True
 
 
@@ -43,6 +61,18 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
         # Add correlation ID if present
         if hasattr(record, "correlation_id") and record.correlation_id:
             log_record["correlation_id"] = record.correlation_id
+        if hasattr(record, "delivery_id") and record.delivery_id:
+            log_record["delivery_id"] = record.delivery_id
+        if hasattr(record, "run_id") and record.run_id:
+            log_record["run_id"] = record.run_id
+        if hasattr(record, "run_key") and record.run_key:
+            log_record["run_key"] = record.run_key
+        if hasattr(record, "failure_id") and record.failure_id:
+            log_record["failure_id"] = record.failure_id
+        if hasattr(record, "trace_id") and record.trace_id:
+            log_record["trace_id"] = record.trace_id
+        if hasattr(record, "span_id") and record.span_id:
+            log_record["span_id"] = record.span_id
 
         # Add source location for debugging
         log_record["module"] = record.module

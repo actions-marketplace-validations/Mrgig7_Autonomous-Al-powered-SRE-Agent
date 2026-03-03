@@ -3,6 +3,8 @@
 Unified interface for multiple CI/CD platform integrations.
 """
 
+import importlib
+
 from sre_agent.providers.base_provider import (
     BaseCIProvider,
     FetchedLogs,
@@ -21,23 +23,24 @@ __all__ = [
     "WebhookVerificationResult",
 ]
 
+
 # Import providers to trigger registration
 # These imports must come after the base classes are defined
 def register_all_providers():
     """Import all provider implementations to register them."""
     try:
-        from sre_agent.providers import gitlab_provider
+        importlib.import_module("sre_agent.providers.gitlab_provider")
     except ImportError:
         pass
     try:
-        from sre_agent.providers import circleci_provider
+        importlib.import_module("sre_agent.providers.circleci_provider")
     except ImportError:
         pass
     try:
-        from sre_agent.providers import jenkins_provider
+        importlib.import_module("sre_agent.providers.jenkins_provider")
     except ImportError:
         pass
     try:
-        from sre_agent.providers import azuredevops_provider
+        importlib.import_module("sre_agent.providers.azuredevops_provider")
     except ImportError:
         pass

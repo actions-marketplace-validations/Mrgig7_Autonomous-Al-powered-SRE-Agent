@@ -1,4 +1,5 @@
 """Health check endpoints for monitoring and load balancer probes."""
+
 import logging
 from typing import Literal
 

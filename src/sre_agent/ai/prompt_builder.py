@@ -2,10 +2,10 @@
 
 Constructs structured prompts for LLMs to generate code fixes.
 """
-import logging
-from typing import Any
 
-from sre_agent.schemas.context import FailureContextBundle, StackTrace
+import logging
+
+from sre_agent.schemas.context import FailureContextBundle
 from sre_agent.schemas.intelligence import RCAResult
 
 logger = logging.getLogger(__name__)
@@ -96,6 +96,11 @@ Then provide a one-line explanation.
 
 ## Generate Fixes Now"""
 
+FIX_PLAN_PROMPT_TEMPLATE = """You are a senior software engineer creating an actionable, minimal fix plan for a CI/CD failure.\n\nReturn JSON ONLY. Do not include markdown. Do not include commentary.\n\n## Inputs\nCategory: {category}\nError: {error_summary}\n\nHypothesis: {hypothesis}\nConfidence: {confidence:.3f}\n\nLog summary:\n{log_summary}\n\nTop evidence snippets:\n{evidence_snippets}\n\nChanged files:\n{changed_files}\n\n## Output Contract\nReturn a single JSON object matching this schema:\n\n{{\n  \"root_cause\": \"string\",\n  \"category\": \"string\",\n  \"confidence\": 0.0,\n  \"files\": [\"path/to/file\"],\n  \"operations\": [\n    {{\n      \"type\": \"add_dependency\" | \"pin_dependency\" | \"update_config\" | \"modify_code\" | \"remove_unused\",\n      \"file\": \"path/to/file\",\n      \"details\": {{}},\n      \"rationale\": \"short string\",\n      \"evidence\": [\"short references to log lines/snippets\"]\n    }}\n  ]\n}}\n\nRules:\n- Output MUST be valid JSON.\n- Include no unknown fields.\n- confidence MUST be between 0 and 1.\n- operations MUST be <= 10.\n- Every operation.file MUST be included in files.\n- Keep diffs minimal: prefer a single-file change when possible.\n\nReturn JSON only."""
+
+
+CRITIC_PROMPT_TEMPLATE = """You are a strict software reliability critic.\n\nReturn JSON ONLY. Do not include markdown. Do not include commentary.\n\nReview the proposed plan for hallucination risk and reasoning consistency.\n\n## Inputs\nCategory: {category}\nError: {error_summary}\n\nHypothesis: {hypothesis}\nConfidence: {confidence:.3f}\n\nLog summary:\n{log_summary}\n\nTop evidence snippets:\n{evidence_snippets}\n\nPlan JSON:\n{plan_json}\n\n## Output Contract\nReturn a single JSON object:\n\n{{\n  \"allowed\": true,\n  \"hallucination_risk\": 0.0,\n  \"reasoning_consistency\": 1.0,\n  \"issues\": [\n    {{\n      \"code\": \"string_code\",\n      \"severity\": \"info|warn|block\",\n      \"message\": \"short string\",\n      \"evidence_refs\": [\"short references\"]\n    }}\n  ],\n  \"requires_manual_review\": false,\n  \"recommended_label\": \"safe|needs-review\"\n}}\n\nRules:\n- Output MUST be valid JSON.\n- Include no unknown fields.\n- hallucination_risk and reasoning_consistency MUST be between 0 and 1.\n- Set requires_manual_review=true when confidence is weak or evidence does not support operations.\n- If not allowed, provide at least one issue.\n\nReturn JSON only."""
+
 
 class PromptBuilder:
     """
@@ -139,12 +144,84 @@ class PromptBuilder:
         target_file = self._get_primary_target(rca_result, context)
 
         if len(file_contents) > 1:
-            return self._build_multi_file_prompt(
-                rca_result, context, file_contents
-            )
+            return self._build_multi_file_prompt(rca_result, context, file_contents)
 
-        return self._build_single_file_prompt(
-            rca_result, context, target_file, file_contents
+        return self._build_single_file_prompt(rca_result, context, target_file, file_contents)
+
+    def build_fix_plan_prompt(
+        self,
+        rca_result: RCAResult,
+        context: FailureContextBundle,
+        max_evidence: int = 6,
+    ) -> str:
+        error_summary = self._get_error_summary(rca_result, context)
+        log_summary = (context.log_summary or "").strip()
+
+        evidence_lines: list[str] = []
+        if context.errors:
+            for e in context.errors[: max_evidence // 2]:
+                evidence_lines.append(f"{e.severity.value}: {e.message}")
+        if context.test_failures:
+            for tf in context.test_failures[: max_evidence // 2]:
+                evidence_lines.append(f"test_failure: {tf.test_name} - {tf.error_message}")
+        if context.build_errors and len(evidence_lines) < max_evidence:
+            for be in context.build_errors[: max_evidence - len(evidence_lines)]:
+                evidence_lines.append(f"build_error: {be.file}:{be.line} - {be.message}")
+
+        evidence_snippets = (
+            "\n".join(f"- {line}" for line in evidence_lines) if evidence_lines else "- (none)"
+        )
+
+        changed_files = (
+            "\n".join(f"- {cf.filename} ({cf.status})" for cf in context.changed_files[:20])
+            if context.changed_files
+            else "- (none)"
+        )
+
+        return FIX_PLAN_PROMPT_TEMPLATE.format(
+            category=rca_result.classification.category.value,
+            error_summary=error_summary,
+            hypothesis=rca_result.primary_hypothesis.description,
+            confidence=rca_result.primary_hypothesis.confidence,
+            log_summary=log_summary or "(none)",
+            evidence_snippets=evidence_snippets,
+            changed_files=changed_files,
+        )
+
+    def build_critic_prompt(
+        self,
+        *,
+        rca_result: RCAResult,
+        context: FailureContextBundle,
+        plan_json: str,
+        max_evidence: int = 6,
+    ) -> str:
+        error_summary = self._get_error_summary(rca_result, context)
+        log_summary = (context.log_summary or "").strip()
+
+        evidence_lines: list[str] = []
+        if context.errors:
+            for e in context.errors[: max_evidence // 2]:
+                evidence_lines.append(f"{e.severity.value}: {e.message}")
+        if context.test_failures:
+            for tf in context.test_failures[: max_evidence // 2]:
+                evidence_lines.append(f"test_failure: {tf.test_name} - {tf.error_message}")
+        if context.build_errors and len(evidence_lines) < max_evidence:
+            for be in context.build_errors[: max_evidence - len(evidence_lines)]:
+                evidence_lines.append(f"build_error: {be.file}:{be.line} - {be.message}")
+
+        evidence_snippets = (
+            "\n".join(f"- {line}" for line in evidence_lines) if evidence_lines else "- (none)"
+        )
+
+        return CRITIC_PROMPT_TEMPLATE.format(
+            category=rca_result.classification.category.value,
+            error_summary=error_summary,
+            hypothesis=rca_result.primary_hypothesis.description,
+            confidence=rca_result.primary_hypothesis.confidence,
+            log_summary=log_summary or "(none)",
+            evidence_snippets=evidence_snippets,
+            plan_json=plan_json,
         )
 
     def _build_single_file_prompt(
@@ -207,9 +284,7 @@ class PromptBuilder:
         for filename, content in list(file_contents.items())[:3]:  # Limit to 3 files
             language = self._detect_language(filename)
             focused = self._focus_content(content, context, filename)
-            file_sections.append(
-                f"### {filename}\n```{language}\n{focused}\n```"
-            )
+            file_sections.append(f"### {filename}\n```{language}\n{focused}\n```")
 
         return MULTI_FILE_PROMPT_TEMPLATE.format(
             category=rca_result.classification.category.value,

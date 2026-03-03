@@ -1,9 +1,9 @@
 """Unit tests for webhook signature verification."""
+
 import hashlib
 import hmac
 
 import pytest
-
 from sre_agent.core.security import WebhookSignatureError, verify_github_signature
 
 

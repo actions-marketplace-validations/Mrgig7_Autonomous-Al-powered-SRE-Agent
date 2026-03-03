@@ -2,9 +2,8 @@
 
 Uses embeddings and vector search to find relevant past incidents.
 """
+
 import logging
-from pathlib import Path
-from uuid import UUID
 
 from sre_agent.intelligence.embeddings import EmbeddingGenerator, build_failure_text
 from sre_agent.intelligence.vector_store import IncidentVectorStore
@@ -111,15 +110,17 @@ class IncidentSearch:
         # Convert to SimilarIncident
         similar = []
         for record, score in results:
-            similar.append(SimilarIncident(
-                incident_id=record.incident_id,
-                similarity_score=score,
-                summary=record.summary,
-                root_cause=record.root_cause,
-                resolution=record.resolution,
-                fix_diff=record.fix_diff,
-                occurred_at=record.occurred_at,
-            ))
+            similar.append(
+                SimilarIncident(
+                    incident_id=record.incident_id,
+                    similarity_score=score,
+                    summary=record.summary,
+                    root_cause=record.root_cause,
+                    resolution=record.resolution,
+                    fix_diff=record.fix_diff,
+                    occurred_at=record.occurred_at,
+                )
+            )
 
         logger.info(
             f"Found {len(similar)} similar incidents",

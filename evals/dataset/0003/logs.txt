@@ -1,0 +1,18 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.8, pytest-7.4.4
+collected 2 items
+
+tests/test_api.py .F                                                        [100%]
+
+=================================== FAILURES ===================================
+________________________________ test_fastapi __________________________________
+
+    def test_fastapi():
+>       import fastapi
+E       ModuleNotFoundError: No module named 'fastapi'
+
+Traceback (most recent call last):
+  File "/workspace/tests/test_api.py", line 4, in test_fastapi
+    import fastapi
+ModuleNotFoundError: No module named 'fastapi'
+

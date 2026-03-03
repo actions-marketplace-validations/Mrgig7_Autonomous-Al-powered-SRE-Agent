@@ -1,0 +1,14 @@
+> web@1.0.0 test
+> jest
+
+ FAIL  src/sum.test.js
+  \u25cf adds two numbers
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 3
+    Received: 2
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+

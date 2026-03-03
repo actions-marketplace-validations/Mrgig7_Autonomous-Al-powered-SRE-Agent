@@ -3,9 +3,9 @@
 Aggregates observability data (logs, git context, timing) to build
 a FailureContextBundle for downstream RCA.
 """
+
 import logging
 from datetime import datetime
-from uuid import UUID
 
 from sre_agent.models.events import PipelineEvent
 from sre_agent.schemas.context import (
@@ -14,9 +14,10 @@ from sre_agent.schemas.context import (
     LogContent,
     StepTiming,
 )
+from sre_agent.services.build_log_ingestion import BuildLogIngestionService
 from sre_agent.services.github_client import (
-    GitHubClient,
     GitHubAPIError,
+    GitHubClient,
     GitHubNotFoundError,
 )
 from sre_agent.services.log_parser import LogParser
@@ -45,6 +46,7 @@ class ContextBuilder:
         self,
         github_client: GitHubClient | None = None,
         log_parser: LogParser | None = None,
+        build_log_ingestion_service: BuildLogIngestionService | None = None,
         max_log_size_mb: int = 10,
     ):
         """
@@ -57,7 +59,9 @@ class ContextBuilder:
         """
         self._github_client = github_client
         self.log_parser = log_parser or LogParser()
-        self.max_log_size_bytes = max_log_size_mb * 1024 * 1024
+        self.log_ingestion = build_log_ingestion_service or BuildLogIngestionService(
+            max_log_size_mb=max_log_size_mb
+        )
 
     async def build_context(
         self,
@@ -153,56 +157,25 @@ class ContextBuilder:
     ) -> None:
         """Fetch and parse logs for the failed job."""
         try:
-            # Extract job_id from raw_payload if available
-            job_id = self._extract_job_id(event)
-            if not job_id:
-                logger.warning(
-                    "Could not extract job_id from event",
-                    extra={"event_id": str(event.id)},
-                )
+            ingested = await self.log_ingestion.ingest(client=client, event=event)
+            if ingested is None:
                 return
 
-            # Download logs
-            log_content = await client.download_job_logs(
-                repo=event.repo,
-                job_id=job_id,
-            )
-
-            # Check size
-            size_bytes = len(log_content.encode("utf-8"))
-            truncated = False
-            if size_bytes > self.max_log_size_bytes:
-                # Truncate to last N bytes (end usually has the error)
-                log_content = log_content[-self.max_log_size_bytes:]
-                truncated = True
-                logger.info(
-                    "Log content truncated",
-                    extra={
-                        "original_size": size_bytes,
-                        "truncated_to": self.max_log_size_bytes,
-                    },
-                )
-
             bundle.log_content = LogContent(
-                raw_content=log_content,
-                truncated=truncated,
-                size_bytes=size_bytes,
+                raw_content=ingested.content,
+                truncated=ingested.truncated,
+                size_bytes=ingested.size_bytes,
                 job_name=event.stage,
             )
 
             # Parse logs
-            parsed = self.log_parser.parse(log_content)
+            parsed = self.log_parser.parse(ingested.content)
             bundle.errors = parsed.errors
             bundle.stack_traces = parsed.stack_traces
             bundle.test_failures = parsed.test_failures
             bundle.build_errors = parsed.build_errors
             bundle.log_summary = parsed.summary
 
-        except GitHubNotFoundError:
-            logger.warning(
-                "Logs not found for job",
-                extra={"event_id": str(event.id)},
-            )
         except Exception as e:
             logger.error(
                 "Failed to fetch logs",
@@ -223,9 +196,7 @@ class ContextBuilder:
             )
 
             bundle.commit_message = commit.get("commit", {}).get("message")
-            bundle.commit_author = (
-                commit.get("commit", {}).get("author", {}).get("name")
-            )
+            bundle.commit_author = commit.get("commit", {}).get("author", {}).get("name")
 
             # Extract changed files
             files = commit.get("files", [])

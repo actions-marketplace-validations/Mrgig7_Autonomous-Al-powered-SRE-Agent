@@ -3,12 +3,13 @@
 Transforms provider-specific webhook payloads into a canonical
 NormalizedPipelineEvent format for downstream processing.
 """
+
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC
 from typing import Protocol
 
-from sre_agent.schemas.github import GitHubWorkflowJobPayload
+from sre_agent.schemas.github import GitHubWorkflowJobPayload, GitHubWorkflowRunPayload
 from sre_agent.schemas.normalized import CIProvider, FailureType, NormalizedPipelineEvent
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ class EventNormalizer(Protocol):
         self,
         payload: dict,
         correlation_id: str | None = None,
+        event_type: str = "workflow_job",
     ) -> NormalizedPipelineEvent:
         """Normalize a provider-specific payload to canonical format."""
         ...
@@ -69,13 +71,15 @@ class GitHubEventNormalizer:
         self,
         payload: dict,
         correlation_id: str | None = None,
+        event_type: str = "workflow_job",
     ) -> NormalizedPipelineEvent:
         """
-        Normalize GitHub workflow_job payload to canonical format.
+        Normalize GitHub workflow_job or workflow_run payload to canonical format.
 
         Args:
             payload: Raw GitHub webhook payload dict
             correlation_id: Optional correlation ID for tracing
+            event_type: GitHub event type ("workflow_job" or "workflow_run")
 
         Returns:
             NormalizedPipelineEvent with all fields populated
@@ -83,7 +87,10 @@ class GitHubEventNormalizer:
         Raises:
             ValueError: If payload structure is invalid
         """
-        # Parse and validate payload
+        if event_type == "workflow_run":
+            return self._normalize_workflow_run(payload, correlation_id)
+
+        # Parse and validate workflow_job payload
         try:
             parsed = GitHubWorkflowJobPayload.model_validate(payload)
         except Exception as e:
@@ -116,7 +123,7 @@ class GitHubEventNormalizer:
         # Determine event timestamp
         event_timestamp = job.completed_at or job.started_at or job.created_at
         if event_timestamp.tzinfo is None:
-            event_timestamp = event_timestamp.replace(tzinfo=timezone.utc)
+            event_timestamp = event_timestamp.replace(tzinfo=UTC)
 
         normalized = NormalizedPipelineEvent(
             idempotency_key=idempotency_key,
@@ -202,6 +209,72 @@ class GitHubEventNormalizer:
         # Return names of failed steps as error summary
         failed_names = [s.name for s in failed_steps]
         return f"Failed steps: {', '.join(failed_names)}"
+
+    def _normalize_workflow_run(
+        self,
+        payload: dict,
+        correlation_id: str | None = None,
+    ) -> NormalizedPipelineEvent:
+        """
+        Normalize GitHub workflow_run payload to canonical format.
+
+        Handles run-level failure events which indicate that the overall
+        workflow (not just a single job) has failed.
+        """
+        try:
+            parsed = GitHubWorkflowRunPayload.model_validate(payload)
+        except Exception as e:
+            logger.error(
+                "Failed to parse GitHub workflow_run payload",
+                extra={"error": str(e), "correlation_id": correlation_id},
+            )
+            raise ValueError(f"Invalid GitHub workflow_run payload: {e}") from e
+
+        run = parsed.workflow_run
+        repo = parsed.repository
+
+        # Generate idempotency key for workflow_run
+        idempotency_key = f"github_actions_run:{repo.full_name}:{run.id}:{run.run_attempt}"
+
+        # Infer failure type from workflow name
+        workflow_name = run.name or "unknown"
+        failure_type = self._infer_failure_type(
+            job_name=workflow_name,
+            conclusion=run.conclusion,
+        )
+
+        # Determine event timestamp
+        event_timestamp = run.updated_at or run.created_at
+        if event_timestamp.tzinfo is None:
+            event_timestamp = event_timestamp.replace(tzinfo=UTC)
+
+        normalized = NormalizedPipelineEvent(
+            idempotency_key=idempotency_key,
+            ci_provider=CIProvider.GITHUB_ACTIONS,
+            pipeline_id=str(run.id),
+            repo=repo.full_name,
+            commit_sha=run.head_sha,
+            branch=run.head_branch,
+            stage=workflow_name,
+            failure_type=failure_type,
+            error_message=f"Workflow '{workflow_name}' failed (run #{run.run_number})",
+            event_timestamp=event_timestamp,
+            raw_payload=payload,
+            correlation_id=correlation_id,
+        )
+
+        logger.info(
+            "Normalized GitHub workflow_run event",
+            extra={
+                "idempotency_key": idempotency_key,
+                "repo": repo.full_name,
+                "failure_type": failure_type.value,
+                "workflow_name": workflow_name,
+                "correlation_id": correlation_id,
+            },
+        )
+
+        return normalized
 
 
 def get_normalizer(ci_provider: str) -> EventNormalizer:

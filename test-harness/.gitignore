@@ -1,0 +1,6 @@
+reports/
+sample-app/frontend/node_modules/
+sample-app/frontend/dist/
+__pycache__/
+*.pyc
+

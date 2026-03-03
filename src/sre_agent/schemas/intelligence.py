@@ -1,7 +1,7 @@
 """Schemas for failure intelligence and RCA results."""
-from datetime import datetime
+
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -134,17 +134,14 @@ class RCAResult(BaseModel):
         description="Time taken for analysis",
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(UTC),
         description="When this analysis was created",
     )
 
     @property
     def is_high_confidence(self) -> bool:
         """Check if we have high confidence in the analysis."""
-        return (
-            self.classification.confidence >= 0.8
-            and self.primary_hypothesis.confidence >= 0.7
-        )
+        return self.classification.confidence >= 0.8 and self.primary_hypothesis.confidence >= 0.7
 
     @property
     def has_historical_match(self) -> bool:

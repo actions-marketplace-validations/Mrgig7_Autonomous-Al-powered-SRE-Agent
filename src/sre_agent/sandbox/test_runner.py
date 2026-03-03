@@ -2,10 +2,10 @@
 
 Detects test frameworks and runs tests in isolated containers.
 """
+
 import logging
 import re
 from pathlib import Path
-from typing import Any
 
 from sre_agent.sandbox.docker_sandbox import DockerSandbox
 from sre_agent.schemas.validation import (
@@ -220,10 +220,12 @@ class TestRunner:
             test_name = match.group(1)
             status = match.group(2).lower()
 
-            results.append(TestResult(
-                name=test_name,
-                status=status,
-            ))
+            results.append(
+                TestResult(
+                    name=test_name,
+                    status=status,
+                )
+            )
 
         # Also look for summary line
         summary_pattern = re.compile(
@@ -256,18 +258,22 @@ class TestRunner:
         fail_pattern = re.compile(r"✕\s+(.+?)(?:\s+\((\d+)\s*ms\))?$", re.MULTILINE)
 
         for match in pass_pattern.finditer(output):
-            results.append(TestResult(
-                name=match.group(1).strip(),
-                status="passed",
-                duration_seconds=float(match.group(2) or 0) / 1000,
-            ))
+            results.append(
+                TestResult(
+                    name=match.group(1).strip(),
+                    status="passed",
+                    duration_seconds=float(match.group(2) or 0) / 1000,
+                )
+            )
 
         for match in fail_pattern.finditer(output):
-            results.append(TestResult(
-                name=match.group(1).strip(),
-                status="failed",
-                duration_seconds=float(match.group(2) or 0) / 1000,
-            ))
+            results.append(
+                TestResult(
+                    name=match.group(1).strip(),
+                    status="failed",
+                    duration_seconds=float(match.group(2) or 0) / 1000,
+                )
+            )
 
         return results
 
@@ -283,10 +289,12 @@ class TestRunner:
 
         for match in pattern.finditer(output):
             status_map = {"PASS": "passed", "FAIL": "failed", "SKIP": "skipped"}
-            results.append(TestResult(
-                name=match.group(2),
-                status=status_map.get(match.group(1), "error"),
-                duration_seconds=float(match.group(3)),
-            ))
+            results.append(
+                TestResult(
+                    name=match.group(2),
+                    status=status_map.get(match.group(1), "error"),
+                    duration_seconds=float(match.group(3)),
+                )
+            )
 
         return results

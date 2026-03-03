@@ -2,9 +2,12 @@ name: SRE Agent - Analyze Failed Workflows
 
 on:
   workflow_run:
-    workflows: ["*"]  # Trigger on any workflow
+    workflows: ["CI"]  # Trigger on the CI workflow
     types:
       - completed
+
+permissions:
+  contents: write
 
 jobs:
   analyze-failure:
@@ -17,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Run SRE Agent Analysis
-        uses: Mrgig7/Autonomous-AI-powered-SRE-Agent@main
+        uses: ./
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           notify-slack: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
@@ -46,19 +49,19 @@ jobs:
             const sha = context.payload.workflow_run.head_sha;
             
             const body = `## 🔧 SRE Agent Analysis
-            
-**Workflow:** ${context.payload.workflow_run.name}
-**Status:** ❌ Failed
-**Branch:** ${context.payload.workflow_run.head_branch}
 
-### Failure Summary
-${report.summary || 'Analysis complete. See report for details.'}
+            **Workflow:** ${context.payload.workflow_run.name}
+            **Status:** ❌ Failed
+            **Branch:** ${context.payload.workflow_run.head_branch}
 
-### Suggested Fix
-${report.fix_suggestion || 'No automated fix available.'}
+            ### Failure Summary
+            ${report.summary || 'Analysis complete. See report for details.'}
 
----
-*Analyzed by [SRE Agent](https://github.com/Mrgig7/Autonomous-AI-powered-SRE-Agent)*`;
+            ### Suggested Fix
+            ${report.fix_suggestion || 'No automated fix available.'}
+
+            ---
+            *Analyzed by [SRE Agent](https://github.com/Mrgig7/Autonomous-AI-powered-SRE-Agent)*`;
             
             await github.rest.repos.createCommitComment({
               owner: context.repo.owner,

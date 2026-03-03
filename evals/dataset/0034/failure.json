@@ -1,0 +1,12 @@
+{
+  "id": "0034",
+  "source": "synthetic",
+  "repo_language": "docker",
+  "category": "docker_apt_get_cleanup",
+  "description": "Docker build fails during apt-get; enforce apt cache cleanup",
+  "policy_profile": "default",
+  "created_at": "2026-01-21",
+  "notes": "synthetic docker apt cleanup",
+  "public_source_url": null
+}
+

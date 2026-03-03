@@ -2,10 +2,12 @@
 
 Coordinates the full PR creation workflow.
 """
+
 import logging
 from pathlib import Path
 from uuid import UUID
 
+from sre_agent.config import get_settings
 from sre_agent.pr.branch_manager import BranchManager
 from sre_agent.pr.pr_creator import PRCreator
 from sre_agent.schemas.fix import FixSuggestion
@@ -50,6 +52,7 @@ class PROrchestrator:
         validation: ValidationResult | None,
         repo_url: str,
         base_branch: str = "main",
+        run_id: UUID | None = None,
     ) -> PRResult:
         """
         Create a PR for a validated fix.
@@ -78,6 +81,30 @@ class PROrchestrator:
 
         # Generate branch name
         branch_name = self.branch_manager.generate_branch_name(fix.fix_id)
+        if not fix.is_safe_to_apply:
+            return PRResult(
+                status=PRStatus.FAILED,
+                branch_name=branch_name,
+                base_branch=base_branch,
+                fix_id=fix.fix_id,
+                event_id=fix.event_id,
+                error_message="Fix blocked by safety policy or guardrails",
+            )
+
+        request = self._build_pr_request(
+            fix=fix,
+            rca_result=rca_result,
+            validation=validation,
+            repo=repo,
+            base_branch=base_branch,
+            run_id=run_id,
+        )
+        existing = await self.pr_creator.find_open_pr_by_head(
+            request=request,
+            head_branch=branch_name,
+        )
+        if existing and existing.pr_url:
+            return existing
 
         repo_path: Path | None = None
 
@@ -99,9 +126,6 @@ class PROrchestrator:
             await self.branch_manager.push_branch(repo_path, branch_name)
 
             # Create PR
-            request = self._build_pr_request(
-                fix, rca_result, validation, repo, base_branch
-            )
             result = await self.pr_creator.create_pr(request, branch_name)
 
             return result
@@ -120,6 +144,21 @@ class PROrchestrator:
         finally:
             if repo_path:
                 await self.branch_manager.cleanup(repo_path)
+
+    async def merge_pr_for_fix(
+        self,
+        *,
+        repo_url: str,
+        pr_number: int,
+    ) -> tuple[bool, dict]:
+        """Merge PR created for a fix."""
+        repo = self._extract_repo(repo_url)
+        settings = get_settings()
+        return await self.pr_creator.merge_pr(
+            repo=repo,
+            pr_number=pr_number,
+            merge_method=settings.phase3_auto_merge_method,
+        )
 
     def _extract_repo(self, repo_url: str) -> str:
         """Extract owner/repo from URL."""
@@ -165,14 +204,31 @@ Fix ID: {fix.fix_id}
         validation: ValidationResult | None,
         repo: str,
         base_branch: str,
+        run_id: UUID | None = None,
     ) -> PRRequest:
         """Build PR request from fix and context."""
+        if validation is None:
+            sandbox_summary = "validation unavailable"
+        else:
+            sandbox_summary = (
+                f"status={validation.status.value}; "
+                f"passed={validation.tests_passed}; failed={validation.tests_failed}"
+            )
+        policy_summary = None
+        risk_score = None
+        if fix.safety_status:
+            risk_score = fix.safety_status.danger_score
+            policy_summary = (
+                f"label={fix.safety_status.pr_label}; "
+                f"violations={len(fix.safety_status.violations)}"
+            )
         return PRRequest(
             fix_id=fix.fix_id,
             event_id=fix.event_id,
             repo=repo,
             base_branch=base_branch,
             diff=fix.full_diff,
+            labels=[fix.safety_status.pr_label] if fix.safety_status else ["needs-review"],
             error_type=rca_result.classification.category.value,
             hypothesis=rca_result.primary_hypothesis.description,
             confidence=rca_result.primary_hypothesis.confidence,
@@ -180,6 +236,11 @@ Fix ID: {fix.fix_id}
             tests_passed=validation.tests_passed if validation else 0,
             tests_failed=validation.tests_failed if validation else 0,
             validation_status=validation.status.value if validation else "not_validated",
+            risk_score=risk_score,
+            evidence_lines=rca_result.primary_hypothesis.evidence,
+            policy_summary=policy_summary,
+            sandbox_summary=sandbox_summary,
+            provenance_artifact_url=(f"/api/v1/runs/{run_id}/artifact" if run_id else None),
         )
 
 

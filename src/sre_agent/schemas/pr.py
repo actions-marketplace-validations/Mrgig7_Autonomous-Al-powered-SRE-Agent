@@ -1,5 +1,6 @@
 """Schemas for Pull Request operations."""
-from datetime import datetime
+
+from datetime import UTC, datetime
 from enum import Enum
 from uuid import UUID
 
@@ -37,7 +38,7 @@ class PRResult(BaseModel):
     title: str | None = Field(None, description="PR title")
     error_message: str | None = Field(None, description="Error if failed")
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(UTC),
         description="When PR was created",
     )
 
@@ -52,6 +53,7 @@ class PRRequest(BaseModel):
     diff: str = Field(..., description="Unified diff to apply")
     title: str | None = Field(None, description="Custom PR title")
     description: str | None = Field(None, description="Custom PR body")
+    labels: list[str] | None = Field(None, description="Labels to apply to the PR")
 
     # RCA context for PR body
     error_type: str | None = None
@@ -63,6 +65,11 @@ class PRRequest(BaseModel):
     tests_passed: int = 0
     tests_failed: int = 0
     validation_status: str | None = None
+    risk_score: int | None = None
+    evidence_lines: list[str] = Field(default_factory=list)
+    policy_summary: str | None = None
+    sandbox_summary: str | None = None
+    provenance_artifact_url: str | None = None
 
 
 class RollbackRequest(BaseModel):

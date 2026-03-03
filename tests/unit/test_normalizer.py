@@ -1,8 +1,8 @@
 """Unit tests for event normalization."""
+
 from typing import Any
 
 import pytest
-
 from sre_agent.schemas.normalized import CIProvider, FailureType
 from sre_agent.services.event_normalizer import GitHubEventNormalizer
 

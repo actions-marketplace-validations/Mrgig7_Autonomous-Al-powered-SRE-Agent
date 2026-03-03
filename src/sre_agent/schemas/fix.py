@@ -1,7 +1,7 @@
 """Schemas for AI-generated fix suggestions."""
-from datetime import datetime
+
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -42,6 +42,21 @@ class GuardrailStatus(BaseModel):
     def warnings(self) -> list[str]:
         """Get warning messages."""
         return [v.message for v in self.violations if v.severity == GuardrailSeverity.WARN]
+
+
+class SafetyViolation(BaseModel):
+    code: str
+    severity: str
+    message: str
+    file_path: str | None = None
+
+
+class SafetyStatus(BaseModel):
+    allowed: bool
+    pr_label: str
+    danger_score: int
+    violations: list[SafetyViolation] = Field(default_factory=list)
+    danger_reasons: list[str] = Field(default_factory=list)
 
 
 class FileDiff(BaseModel):
@@ -92,6 +107,10 @@ class FixSuggestion(BaseModel):
         ...,
         description="Result of guardrail validation",
     )
+    safety_status: SafetyStatus | None = Field(
+        default=None,
+        description="Result of safety policy validation",
+    )
 
     # Model info
     model_used: str = Field(..., description="LLM model used")
@@ -100,14 +119,16 @@ class FixSuggestion(BaseModel):
 
     # Timestamps
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(UTC),
         description="When the fix was generated",
     )
 
     @property
     def is_safe_to_apply(self) -> bool:
         """Check if fix passed guardrails and is safe to apply."""
-        return self.guardrail_status.passed
+        return self.guardrail_status.passed and (
+            self.safety_status.allowed if self.safety_status else True
+        )
 
     @property
     def full_diff(self) -> str:

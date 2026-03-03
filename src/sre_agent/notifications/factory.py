@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 
 def create_notification_manager(settings: Settings) -> NotificationManager:
     """Create and configure notification manager from settings.
-    
+
     Args:
         settings: Application settings
-        
+
     Returns:
         Configured NotificationManager instance
     """
@@ -39,12 +39,9 @@ def create_notification_manager(settings: Settings) -> NotificationManager:
         "error": NotificationLevel.ERROR,
         "critical": NotificationLevel.CRITICAL,
     }
-    
-    min_level = level_map.get(
-        settings.notification_min_level.lower(),
-        NotificationLevel.INFO
-    )
-    
+
+    min_level = level_map.get(settings.notification_min_level.lower(), NotificationLevel.INFO)
+
     # Create manager config
     manager_config = NotificationManagerConfig(
         parallel_dispatch=settings.notification_parallel_dispatch,
@@ -53,9 +50,9 @@ def create_notification_manager(settings: Settings) -> NotificationManager:
         rate_limit_window_seconds=60,
         min_level=min_level,
     )
-    
+
     manager = NotificationManager(config=manager_config)
-    
+
     # Register Slack if enabled
     if settings.slack_enabled:
         slack_config = SlackConfig(
@@ -69,14 +66,14 @@ def create_notification_manager(settings: Settings) -> NotificationManager:
         slack_notifier = SlackNotifier(config=slack_config, enabled=True)
         manager.register_notifier(slack_notifier)
         logger.info("Slack notifier registered")
-    
+
     # Register Teams if enabled
     if settings.teams_enabled and settings.teams_webhook_url:
         teams_config = TeamsConfig(webhook_url=settings.teams_webhook_url)
         teams_notifier = TeamsNotifier(config=teams_config, enabled=True)
         manager.register_notifier(teams_notifier)
         logger.info("Teams notifier registered")
-    
+
     # Register Email if enabled
     if settings.email_enabled:
         email_config = EmailConfig(
@@ -94,7 +91,7 @@ def create_notification_manager(settings: Settings) -> NotificationManager:
         email_notifier = EmailNotifier(config=email_config, enabled=True)
         manager.register_notifier(email_notifier)
         logger.info("Email notifier registered")
-    
+
     # Register PagerDuty if enabled
     if settings.pagerduty_enabled and settings.pagerduty_routing_key:
         pd_config = PagerDutyConfig(
@@ -105,7 +102,7 @@ def create_notification_manager(settings: Settings) -> NotificationManager:
         pd_notifier = PagerDutyNotifier(config=pd_config, enabled=True)
         manager.register_notifier(pd_notifier)
         logger.info("PagerDuty notifier registered")
-    
+
     # Register Webhook if enabled
     if settings.webhook_enabled and settings.webhook_url:
         webhook_config = WebhookConfig(
@@ -117,7 +114,7 @@ def create_notification_manager(settings: Settings) -> NotificationManager:
         webhook_notifier = WebhookNotifier(config=webhook_config, enabled=True)
         manager.register_notifier(webhook_notifier)
         logger.info("Webhook notifier registered")
-    
+
     return manager
 
 
@@ -134,28 +131,29 @@ _notification_manager: Optional[NotificationManager] = None
 
 def get_notification_manager(settings: Optional[Settings] = None) -> NotificationManager:
     """Get or create the global notification manager.
-    
+
     Args:
         settings: Optional settings (uses default if not provided)
-        
+
     Returns:
         NotificationManager instance
     """
     global _notification_manager
-    
+
     if _notification_manager is None:
         if settings is None:
             from sre_agent.config import get_settings
+
             settings = get_settings()
         _notification_manager = create_notification_manager(settings)
-    
+
     return _notification_manager
 
 
 async def shutdown_notification_manager() -> None:
     """Shutdown the global notification manager."""
     global _notification_manager
-    
+
     if _notification_manager is not None:
         await _notification_manager.close()
         _notification_manager = None

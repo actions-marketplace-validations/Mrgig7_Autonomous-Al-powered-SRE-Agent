@@ -1,0 +1,5 @@
+go: downloading example.com/private/mod v0.0.0-20240101000000-abcdefabcdef
+go: example.com/service imports
+    example.com/private/mod/pkg: no matching versions for query \"latest\"
+go: error loading module requirements
+

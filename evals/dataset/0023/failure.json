@@ -1,0 +1,12 @@
+{
+  "id": "0023",
+  "source": "synthetic",
+  "repo_language": "docker",
+  "category": "docker_build_error",
+  "description": "docker build fails due to missing artifact in build context",
+  "policy_profile": "default",
+  "created_at": "2026-01-20",
+  "notes": "synthetic docker COPY failure (unsupported by deterministic patcher)",
+  "public_source_url": null
+}
+

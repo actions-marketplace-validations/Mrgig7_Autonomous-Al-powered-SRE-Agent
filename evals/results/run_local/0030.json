@@ -1,0 +1,96 @@
+{
+  "artifacts": {
+    "classification": {
+      "category": "unknown",
+      "confidence": 0.0,
+      "indicators": [],
+      "reasoning": "No classification patterns matched",
+      "secondary_category": null
+    },
+    "expected": {
+      "allowed_fix_types": [
+        "pin_dependency"
+      ],
+      "expected_category": "java_plugin_version_missing",
+      "success_criteria": {
+        "max_danger_score": 30,
+        "policy_violations_allowed": 0,
+        "validation_must_pass": true
+      }
+    },
+    "failure": {
+      "category": "java_plugin_version_missing",
+      "created_at": "2026-01-21",
+      "description": "Maven build fails because a plugin version is missing/unstable",
+      "id": "0030",
+      "notes": "synthetic java missing plugin version",
+      "policy_profile": "default",
+      "public_source_url": null,
+      "repo_language": "java",
+      "source": "synthetic"
+    },
+    "patch_diff": "",
+    "patch_policy": null,
+    "plan": {
+      "category": "java_plugin_version_missing",
+      "confidence": 0.5,
+      "files": [
+        "pom.xml"
+      ],
+      "operations": [
+        {
+          "details": {
+            "artifact_id": "maven-surefire-plugin",
+            "group_id": "org.apache.maven.plugins",
+            "plugin": true,
+            "spec": "3.1.2"
+          },
+          "evidence": [
+            "[ERROR] Plugin org.apache.maven.plugins:maven-surefire-plugin:test or one of its dependencies could not be resolved"
+          ],
+          "file": "pom.xml",
+          "rationale": "Pin a missing Maven plugin version",
+          "type": "pin_dependency"
+        }
+      ],
+      "root_cause": "offline mock plan for java_plugin_version_missing"
+    },
+    "plan_policy": {
+      "allowed": true,
+      "danger_reasons": [
+        {
+          "code": "file_count",
+          "message": "Files proposed for change",
+          "weight": 5
+        },
+        {
+          "code": "operation_type",
+          "message": "Operation: pin_dependency",
+          "weight": 5
+        }
+      ],
+      "danger_score": 10,
+      "pr_label": "safe",
+      "violations": []
+    }
+  },
+  "result": {
+    "case_id": "0030",
+    "category": "java_plugin_version_missing",
+    "classification_category": "unknown",
+    "danger_score": 10,
+    "diff_too_large": false,
+    "expected_category": "java_plugin_version_missing",
+    "expected_validation_must_pass": true,
+    "forbidden_path_touched": false,
+    "notes": "dependency operation requires details.name and details.spec",
+    "patch_generated": false,
+    "patch_touches_outside_plan": false,
+    "plan_valid": true,
+    "policy_violations": [],
+    "pr_label": "safe",
+    "time_ms": 2,
+    "validation_mode": "mock",
+    "validation_passed": false
+  }
+}

@@ -2,6 +2,7 @@
 
 Validates generated fixes before they can be applied.
 """
+
 import logging
 import re
 from dataclasses import dataclass
@@ -76,18 +77,12 @@ class FixGuardrails:
         self.config = config or GuardrailConfig()
 
         # Compile patterns
-        self._secret_patterns = [
-            re.compile(p) for p in self.SECRET_PATTERNS
-        ]
-        self._destructive_patterns = [
-            re.compile(p) for p in self.DESTRUCTIVE_PATTERNS
-        ]
+        self._secret_patterns = [re.compile(p) for p in self.SECRET_PATTERNS]
+        self._destructive_patterns = [re.compile(p) for p in self.DESTRUCTIVE_PATTERNS]
 
         # Add any custom block patterns
         if self.config.block_patterns:
-            self._custom_patterns = [
-                re.compile(p) for p in self.config.block_patterns
-            ]
+            self._custom_patterns = [re.compile(p) for p in self.config.block_patterns]
         else:
             self._custom_patterns = []
 
@@ -111,9 +106,7 @@ class FixGuardrails:
         violations.extend(self._check_diff_syntax(fix))
 
         # Determine pass/fail
-        has_blocking = any(
-            v.severity == GuardrailSeverity.BLOCK for v in violations
-        )
+        has_blocking = any(v.severity == GuardrailSeverity.BLOCK for v in violations)
 
         logger.info(
             "Guardrail validation complete",
@@ -134,25 +127,29 @@ class FixGuardrails:
         violations = []
 
         if len(fix.target_files) > self.config.max_files:
-            violations.append(GuardrailViolation(
-                rule="file_scope",
-                severity=GuardrailSeverity.BLOCK,
-                message=(
-                    f"Fix affects {len(fix.target_files)} files, "
-                    f"max allowed is {self.config.max_files}"
-                ),
-            ))
+            violations.append(
+                GuardrailViolation(
+                    rule="file_scope",
+                    severity=GuardrailSeverity.BLOCK,
+                    message=(
+                        f"Fix affects {len(fix.target_files)} files, "
+                        f"max allowed is {self.config.max_files}"
+                    ),
+                )
+            )
 
         # Check for file deletions
         if not self.config.allow_delete_files:
             for diff in fix.diffs:
                 if self._is_file_deletion(diff):
-                    violations.append(GuardrailViolation(
-                        rule="file_deletion",
-                        severity=GuardrailSeverity.BLOCK,
-                        message=f"Fix deletes file {diff.filename}",
-                        location=diff.filename,
-                    ))
+                    violations.append(
+                        GuardrailViolation(
+                            rule="file_deletion",
+                            severity=GuardrailSeverity.BLOCK,
+                            message=f"Fix deletes file {diff.filename}",
+                            location=diff.filename,
+                        )
+                    )
 
         return violations
 
@@ -163,20 +160,24 @@ class FixGuardrails:
         total_changes = fix.total_lines_added + fix.total_lines_removed
 
         if total_changes > self.config.max_lines_changed:
-            violations.append(GuardrailViolation(
-                rule="change_size",
-                severity=GuardrailSeverity.BLOCK,
-                message=(
-                    f"Fix changes {total_changes} lines, "
-                    f"max allowed is {self.config.max_lines_changed}"
-                ),
-            ))
+            violations.append(
+                GuardrailViolation(
+                    rule="change_size",
+                    severity=GuardrailSeverity.BLOCK,
+                    message=(
+                        f"Fix changes {total_changes} lines, "
+                        f"max allowed is {self.config.max_lines_changed}"
+                    ),
+                )
+            )
         elif total_changes > self.config.warn_lines_threshold:
-            violations.append(GuardrailViolation(
-                rule="change_size",
-                severity=GuardrailSeverity.WARN,
-                message=f"Fix changes {total_changes} lines (threshold: {self.config.warn_lines_threshold})",
-            ))
+            violations.append(
+                GuardrailViolation(
+                    rule="change_size",
+                    severity=GuardrailSeverity.WARN,
+                    message=f"Fix changes {total_changes} lines (threshold: {self.config.warn_lines_threshold})",
+                )
+            )
 
         return violations
 
@@ -189,11 +190,13 @@ class FixGuardrails:
         for pattern in self._secret_patterns:
             matches = pattern.findall(full_diff)
             if matches:
-                violations.append(GuardrailViolation(
-                    rule="no_secrets",
-                    severity=GuardrailSeverity.BLOCK,
-                    message="Fix contains potential secret or credential",
-                ))
+                violations.append(
+                    GuardrailViolation(
+                        rule="no_secrets",
+                        severity=GuardrailSeverity.BLOCK,
+                        message="Fix contains potential secret or credential",
+                    )
+                )
                 break  # One violation is enough
 
         return violations
@@ -206,21 +209,25 @@ class FixGuardrails:
 
         for pattern in self._destructive_patterns:
             if pattern.search(full_diff):
-                violations.append(GuardrailViolation(
-                    rule="no_destructive",
-                    severity=GuardrailSeverity.BLOCK,
-                    message="Fix contains potentially destructive command",
-                ))
+                violations.append(
+                    GuardrailViolation(
+                        rule="no_destructive",
+                        severity=GuardrailSeverity.BLOCK,
+                        message="Fix contains potentially destructive command",
+                    )
+                )
                 break
 
         # Check custom patterns
         for pattern in self._custom_patterns:
             if pattern.search(full_diff):
-                violations.append(GuardrailViolation(
-                    rule="custom_block",
-                    severity=GuardrailSeverity.BLOCK,
-                    message="Fix matches blocked pattern",
-                ))
+                violations.append(
+                    GuardrailViolation(
+                        rule="custom_block",
+                        severity=GuardrailSeverity.BLOCK,
+                        message="Fix matches blocked pattern",
+                    )
+                )
                 break
 
         return violations
@@ -231,12 +238,14 @@ class FixGuardrails:
 
         for diff in fix.diffs:
             if not self._is_valid_diff(diff.diff):
-                violations.append(GuardrailViolation(
-                    rule="diff_syntax",
-                    severity=GuardrailSeverity.BLOCK,
-                    message=f"Invalid diff syntax for {diff.filename}",
-                    location=diff.filename,
-                ))
+                violations.append(
+                    GuardrailViolation(
+                        rule="diff_syntax",
+                        severity=GuardrailSeverity.BLOCK,
+                        message=f"Invalid diff syntax for {diff.filename}",
+                        location=diff.filename,
+                    )
+                )
 
         return violations
 
@@ -248,14 +257,14 @@ class FixGuardrails:
         lines = diff_text.strip().split("\n")
 
         # Should have --- and +++ headers
-        has_old_header = any(l.startswith("---") for l in lines[:5])
-        has_new_header = any(l.startswith("+++") for l in lines[:5])
+        has_old_header = any(line.startswith("---") for line in lines[:5])
+        has_new_header = any(line.startswith("+++") for line in lines[:5])
 
         if not (has_old_header and has_new_header):
             return False
 
         # Should have at least one hunk header
-        has_hunk = any(l.startswith("@@") for l in lines)
+        has_hunk = any(line.startswith("@@") for line in lines)
 
         return has_hunk
 
@@ -267,9 +276,9 @@ class FixGuardrails:
 
         # Check if all non-header lines are removals
         lines = diff.diff.strip().split("\n")
-        content_lines = [l for l in lines if not l.startswith(("---", "+++", "@@"))]
+        content_lines = [line for line in lines if not line.startswith(("---", "+++", "@@"))]
 
-        if content_lines and all(l.startswith("-") for l in content_lines if l.strip()):
+        if content_lines and all(line.startswith("-") for line in content_lines if line.strip()):
             return True
 
         return False

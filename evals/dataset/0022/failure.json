@@ -1,0 +1,12 @@
+{
+  "id": "0022",
+  "source": "synthetic",
+  "repo_language": "go",
+  "category": "go_mod_issue",
+  "description": "go mod download fails due to missing module version",
+  "policy_profile": "default",
+  "created_at": "2026-01-20",
+  "notes": "synthetic go module resolution issue (unsupported by deterministic patcher)",
+  "public_source_url": null
+}
+

@@ -1,0 +1,12 @@
+{
+  "id": "0025",
+  "source": "synthetic",
+  "repo_language": "java",
+  "category": "java_test_failure",
+  "description": "JUnit test failing due to assertion mismatch",
+  "policy_profile": "default",
+  "created_at": "2026-01-20",
+  "notes": "synthetic JUnit assertion failure (unsupported by deterministic patcher)",
+  "public_source_url": null
+}
+

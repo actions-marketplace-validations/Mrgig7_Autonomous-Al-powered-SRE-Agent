@@ -92,10 +92,9 @@ open http://localhost:8000/docs
 
 ## Next Steps
 
-- 📖 [Full Documentation](./docs/README.md)
-- 🔔 [Configure Notifications](./docs/notifications.md)
-- 🔐 [Authentication Setup](./docs/auth.md)
-- 🏢 [Enterprise Deployment](./docs/enterprise.md)
+- 📖 [Project README](./README.md)
+- 🧭 [Pipeline Flow](./docs/pipeline.md)
+- 📦 [Publishing](./docs/PUBLISHING.md)
 
 ---
 

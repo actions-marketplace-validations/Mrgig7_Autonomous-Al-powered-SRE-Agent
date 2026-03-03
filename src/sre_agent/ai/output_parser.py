@@ -2,6 +2,7 @@
 
 Parses diff output from LLM responses.
 """
+
 import logging
 import re
 from dataclasses import dataclass
@@ -144,12 +145,14 @@ class OutputParser:
             filename = self._extract_filename(file_diff)
             lines_added, lines_removed = self._count_changes(file_diff)
 
-            diffs.append(FileDiff(
-                filename=filename or "unknown",
-                diff=file_diff,
-                lines_added=lines_added,
-                lines_removed=lines_removed,
-            ))
+            diffs.append(
+                FileDiff(
+                    filename=filename or "unknown",
+                    diff=file_diff,
+                    lines_added=lines_added,
+                    lines_removed=lines_removed,
+                )
+            )
 
         return diffs
 

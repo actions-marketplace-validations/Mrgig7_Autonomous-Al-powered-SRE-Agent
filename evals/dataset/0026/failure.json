@@ -1,0 +1,12 @@
+{
+  "id": "0026",
+  "source": "synthetic",
+  "repo_language": "node",
+  "category": "node_missing_dependency",
+  "description": "Node test run fails due to missing dependency",
+  "policy_profile": "default",
+  "created_at": "2026-01-21",
+  "notes": "synthetic node missing dependency",
+  "public_source_url": null
+}
+

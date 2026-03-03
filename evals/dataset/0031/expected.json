@@ -1,0 +1,10 @@
+{
+  "success_criteria": {
+    "validation_must_pass": true,
+    "policy_violations_allowed": 0,
+    "max_danger_score": 30
+  },
+  "expected_category": "go_mod_tidy",
+  "allowed_fix_types": ["update_config"]
+}
+

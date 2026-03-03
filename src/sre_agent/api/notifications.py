@@ -28,6 +28,7 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 # Request/Response Models
 class SendNotificationRequest(BaseModel):
     """Request body for sending a notification."""
+
     type: NotificationType = Field(..., description="Notification type")
     level: NotificationLevel = Field(NotificationLevel.INFO, description="Severity level")
     title: str = Field(..., min_length=1, max_length=200, description="Notification title")
@@ -48,6 +49,7 @@ class SendNotificationRequest(BaseModel):
 
 class NotificationResultResponse(BaseModel):
     """Response for a single channel result."""
+
     success: bool
     channel: str
     message_id: Optional[str] = None
@@ -57,6 +59,7 @@ class NotificationResultResponse(BaseModel):
 
 class SendNotificationResponse(BaseModel):
     """Response for notification send request."""
+
     notification_id: str
     success_count: int
     total_count: int
@@ -65,6 +68,7 @@ class SendNotificationResponse(BaseModel):
 
 class ChannelStatusResponse(BaseModel):
     """Response for channel status."""
+
     name: str
     enabled: bool
     valid: bool
@@ -73,6 +77,7 @@ class ChannelStatusResponse(BaseModel):
 
 class HistoryEntryResponse(BaseModel):
     """Response for a history entry."""
+
     notification_id: str
     type: str
     level: str
@@ -95,7 +100,7 @@ async def send_notification(request: SendNotificationRequest) -> SendNotificatio
     """Send a notification to configured channels."""
     try:
         manager = get_notification_manager()
-        
+
         payload = NotificationPayload(
             type=request.type,
             level=request.level,
@@ -114,9 +119,9 @@ async def send_notification(request: SendNotificationRequest) -> SendNotificatio
             channels=request.channels,
             priority=request.priority,
         )
-        
+
         results = await manager.send(payload, channels=request.channels or None)
-        
+
         result_responses = {
             channel: NotificationResultResponse(
                 success=result.success,
@@ -127,14 +132,14 @@ async def send_notification(request: SendNotificationRequest) -> SendNotificatio
             )
             for channel, result in results.items()
         }
-        
+
         return SendNotificationResponse(
             notification_id=str(payload.notification_id),
             success_count=sum(1 for r in results.values() if r.success),
             total_count=len(results),
             results=result_responses,
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to send notification: {e}")
         raise HTTPException(
@@ -152,19 +157,21 @@ async def send_notification(request: SendNotificationRequest) -> SendNotificatio
 async def list_channels() -> list[ChannelStatusResponse]:
     """List all registered notification channels and their status."""
     manager = get_notification_manager()
-    
+
     channels = []
     validation_results = await manager.validate_all()
-    
+
     for name in manager.list_notifiers():
         notifier = manager.get_notifier(name)
-        channels.append(ChannelStatusResponse(
-            name=name,
-            enabled=notifier.enabled if notifier else False,
-            valid=validation_results.get(name, False),
-            type=type(notifier).__name__ if notifier else "unknown",
-        ))
-    
+        channels.append(
+            ChannelStatusResponse(
+                name=name,
+                enabled=notifier.enabled if notifier else False,
+                valid=validation_results.get(name, False),
+                type=type(notifier).__name__ if notifier else "unknown",
+            )
+        )
+
     return channels
 
 
@@ -178,13 +185,13 @@ async def test_channel(channel_name: str) -> NotificationResultResponse:
     """Send a test notification to a specific channel."""
     manager = get_notification_manager()
     notifier = manager.get_notifier(channel_name)
-    
+
     if not notifier:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Channel '{channel_name}' not found",
         )
-    
+
     payload = NotificationPayload(
         type=NotificationType.SYSTEM_ALERT,
         level=NotificationLevel.INFO,
@@ -192,10 +199,10 @@ async def test_channel(channel_name: str) -> NotificationResultResponse:
         message="This is a test notification to verify the channel configuration.",
         suggested_actions=["No action required - this is a test"],
     )
-    
+
     try:
         result = await notifier.send(payload)
-        
+
         return NotificationResultResponse(
             success=result.success,
             channel=result.channel,
@@ -203,7 +210,7 @@ async def test_channel(channel_name: str) -> NotificationResultResponse:
             error=result.error,
             sent_at=result.sent_at.isoformat(),
         )
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -224,7 +231,7 @@ async def get_history(
     """Get recent notification history."""
     manager = get_notification_manager()
     history = manager.get_history(limit=limit, success_only=success_only)
-    
+
     return [
         HistoryEntryResponse(
             notification_id=str(entry.notification_id),
@@ -249,13 +256,13 @@ async def enable_channel(channel_name: str) -> dict[str, Any]:
     """Enable a notification channel."""
     manager = get_notification_manager()
     notifier = manager.get_notifier(channel_name)
-    
+
     if not notifier:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Channel '{channel_name}' not found",
         )
-    
+
     notifier.enabled = True
     return {"channel": channel_name, "enabled": True}
 
@@ -269,12 +276,12 @@ async def disable_channel(channel_name: str) -> dict[str, Any]:
     """Disable a notification channel."""
     manager = get_notification_manager()
     notifier = manager.get_notifier(channel_name)
-    
+
     if not notifier:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Channel '{channel_name}' not found",
         )
-    
+
     notifier.enabled = False
     return {"channel": channel_name, "enabled": False}

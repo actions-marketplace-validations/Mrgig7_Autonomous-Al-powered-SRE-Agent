@@ -1,0 +1,32 @@
+groups:
+  - name: sre-agent-alerts
+    rules:
+      - alert: SREAgentHighApiErrorRate
+        expr: |
+          (sum(rate(sre_agent_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(sre_agent_http_requests_total[5m])), 1e-9)) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API 5xx error rate"
+          description: "API 5xx rate has been >5% for 10m."
+
+      - alert: SREAgentPipelineFailureSpike
+        expr: |
+          increase(sre_agent_pipeline_runs_total{outcome="fail"}[10m]) > 3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pipeline failures spiking"
+          description: "More than 3 pipeline failures in 10m."
+
+      - alert: SREAgentQueueBacklogHigh
+        expr: |
+          max(sre_agent_queue_depth) > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Queue backlog high"
+          description: "Queue depth has been >100 for 10m."

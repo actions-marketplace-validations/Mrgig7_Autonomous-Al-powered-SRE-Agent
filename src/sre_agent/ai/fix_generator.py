@@ -2,19 +2,24 @@
 
 Coordinates LLM-based fix generation with guardrails and validation.
 """
+
 import logging
 import time
 from uuid import uuid4
 
-from sre_agent.ai.guardrails import FixGuardrails, GuardrailConfig
+from sre_agent.ai.guardrails import FixGuardrails
 from sre_agent.ai.llm_provider import LLMProvider, get_llm_provider
 from sre_agent.ai.output_parser import OutputParser
 from sre_agent.ai.prompt_builder import PromptBuilder
+from sre_agent.safety.policy_models import PlanIntent
+from sre_agent.safety.runtime import get_policy_engine
 from sre_agent.schemas.context import FailureContextBundle
 from sre_agent.schemas.fix import (
     FixGenerationResponse,
     FixSuggestion,
     GuardrailStatus,
+    SafetyStatus,
+    SafetyViolation,
 )
 from sre_agent.schemas.intelligence import RCAResult
 
@@ -132,6 +137,38 @@ class FixGenerator:
             guardrail_result = self.guardrails.validate(fix)
             fix.guardrail_status = guardrail_result
 
+            policy_engine = get_policy_engine()
+            plan_decision = policy_engine.evaluate_plan(PlanIntent(target_files=fix.target_files))
+            patch_decision = policy_engine.evaluate_patch(fix.full_diff)
+
+            combined_allowed = plan_decision.allowed and patch_decision.allowed
+            combined_violations = plan_decision.violations + patch_decision.violations
+            combined_score = max(plan_decision.danger_score, patch_decision.danger_score)
+            combined_reasons = [
+                r.message for r in (plan_decision.danger_reasons + patch_decision.danger_reasons)
+            ]
+            combined_label = (
+                "safe"
+                if combined_allowed and combined_score <= policy_engine.policy.danger.safe_max
+                else "needs-review"
+            )
+
+            fix.safety_status = SafetyStatus(
+                allowed=combined_allowed,
+                pr_label=combined_label,
+                danger_score=combined_score,
+                violations=[
+                    SafetyViolation(
+                        code=v.code,
+                        severity=v.severity.value,
+                        message=v.message,
+                        file_path=v.file_path,
+                    )
+                    for v in combined_violations
+                ],
+                danger_reasons=combined_reasons,
+            )
+
             generation_time = time.time() - start_time
 
             logger.info(
@@ -142,6 +179,9 @@ class FixGenerator:
                     "files": fix.target_files,
                     "lines_changed": fix.total_lines_added + fix.total_lines_removed,
                     "guardrails_passed": guardrail_result.passed,
+                    "policy_allowed": fix.safety_status.allowed if fix.safety_status else None,
+                    "danger_score": fix.safety_status.danger_score if fix.safety_status else None,
+                    "pr_label": fix.safety_status.pr_label if fix.safety_status else None,
                     "generation_time": generation_time,
                 },
             )
@@ -213,9 +253,9 @@ async def generate_fix_for_event(
     from sqlalchemy import select
 
     from sre_agent.database import async_session_factory
+    from sre_agent.intelligence.rca_engine import RCAEngine
     from sre_agent.models.events import PipelineEvent
     from sre_agent.services.context_builder import ContextBuilder
-    from sre_agent.intelligence.rca_engine import RCAEngine
 
     async with async_session_factory() as session:
         # Load event

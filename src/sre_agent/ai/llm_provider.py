@@ -2,8 +2,8 @@
 
 Supports local LLMs via Ollama for code generation.
 """
+
 import logging
-from abc import ABC, abstractmethod
 from typing import Any, Protocol
 
 import httpx
@@ -222,7 +222,7 @@ def get_llm_provider() -> LLMProvider:
 
     # Get provider from settings or environment
     provider_type = getattr(settings, "llm_provider", "ollama")
-    
+
     if provider_type == "ollama":
         model = getattr(settings, "ollama_model", "deepseek-coder:6.7b")
         base_url = getattr(settings, "ollama_base_url", "http://localhost:11434")

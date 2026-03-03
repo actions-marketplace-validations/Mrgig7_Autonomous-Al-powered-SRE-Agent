@@ -1,0 +1,77 @@
+{
+  "artifacts": {
+    "classification": {
+      "category": "dependency",
+      "confidence": 0.9,
+      "indicators": [
+        "npm\\s*ERR!.*ERESOLVE",
+        "Could\\s*not\\s*resolve\\s*dependency"
+      ],
+      "reasoning": "NPM dependency resolution error",
+      "secondary_category": null
+    },
+    "expected": {
+      "allowed_fix_types": [],
+      "expected_category": "npm_install_error",
+      "success_criteria": {
+        "max_danger_score": 30,
+        "policy_violations_allowed": 0,
+        "validation_must_pass": false
+      }
+    },
+    "failure": {
+      "category": "npm_install_error",
+      "created_at": "2026-01-20",
+      "description": "npm install fails due to dependency resolution",
+      "id": "0021",
+      "notes": "synthetic npm ERESOLVE error (unsupported by deterministic patcher)",
+      "policy_profile": "default",
+      "public_source_url": null,
+      "repo_language": "node",
+      "source": "synthetic"
+    },
+    "patch_diff": "",
+    "patch_policy": null,
+    "plan": {
+      "category": "npm_install_error",
+      "confidence": 0.5,
+      "files": [
+        "src/app.py"
+      ],
+      "operations": [],
+      "root_cause": "offline mock plan for npm_install_error"
+    },
+    "plan_policy": {
+      "allowed": true,
+      "danger_reasons": [
+        {
+          "code": "file_count",
+          "message": "Files proposed for change",
+          "weight": 5
+        }
+      ],
+      "danger_score": 5,
+      "pr_label": "safe",
+      "violations": []
+    }
+  },
+  "result": {
+    "case_id": "0021",
+    "category": "npm_install_error",
+    "classification_category": "dependency",
+    "danger_score": 5,
+    "diff_too_large": false,
+    "expected_category": "npm_install_error",
+    "expected_validation_must_pass": false,
+    "forbidden_path_touched": false,
+    "notes": "",
+    "patch_generated": false,
+    "patch_touches_outside_plan": false,
+    "plan_valid": true,
+    "policy_violations": [],
+    "pr_label": "safe",
+    "time_ms": 2,
+    "validation_mode": "mock",
+    "validation_passed": false
+  }
+}

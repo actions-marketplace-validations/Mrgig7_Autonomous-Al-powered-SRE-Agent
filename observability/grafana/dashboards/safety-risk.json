@@ -1,0 +1,57 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "expr": "sum(rate(sre_agent_pr_created_total[30m])) by (label)", "legendFormat": "{{label}}", "refId": "A" }
+      ],
+      "title": "PR Created (rate) by Label",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "expr": "sum(rate(sre_agent_policy_violations_total[30m])) by (type)", "legendFormat": "{{type}}", "refId": "A" }
+      ],
+      "title": "Policy Violations (rate) by Type",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 8 },
+      "id": 3,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        { "expr": "sum(increase(sre_agent_danger_score_bucket[1h])) by (bucket)", "legendFormat": "{{bucket}}", "refId": "A" }
+      ],
+      "title": "Danger Score Distribution (1h increase)",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "tags": ["sre-agent"],
+  "templating": { "list": [] },
+  "time": { "from": "now-24h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Safety & Risk",
+  "uid": "sre-agent-safety-risk",
+  "version": 1
+}
+

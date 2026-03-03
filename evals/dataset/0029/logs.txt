@@ -1,0 +1,2 @@
+[ERROR] 'dependencies.dependency.version' for org.junit.jupiter:junit-jupiter is missing.
+

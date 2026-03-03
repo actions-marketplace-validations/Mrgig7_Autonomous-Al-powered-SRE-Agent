@@ -1,0 +1,12 @@
+{
+  "id": "0031",
+  "source": "synthetic",
+  "repo_language": "go",
+  "category": "go_mod_tidy",
+  "description": "Go build fails because go.sum is missing entries",
+  "policy_profile": "default",
+  "created_at": "2026-01-21",
+  "notes": "synthetic go mod tidy",
+  "public_source_url": null
+}
+

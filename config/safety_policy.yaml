@@ -1,0 +1,52 @@
+version: 1
+
+paths:
+  allowed:
+    - "**"
+  forbidden:
+    - ".git/**"
+    - ".github/workflows/**"
+    - ".github/actions/**"
+    - ".env"
+    - ".env.*"
+    - "**/*.pem"
+    - "**/*.key"
+
+secrets:
+  forbidden_patterns:
+    - "(?i)password\\s*[=:]\\s*['\\\"][^'\\\"]+['\\\"]"
+    - "(?i)api[_-]?key\\s*[=:]\\s*['\\\"][^'\\\"]+['\\\"]"
+    - "(?i)secret\\s*[=:]\\s*['\\\"][^'\\\"]+['\\\"]"
+    - "(?i)token\\s*[=:]\\s*['\\\"][^'\\\"]+['\\\"]"
+    - "(?i)aws_access_key_id\\s*[=:]"
+    - "(?i)aws_secret_access_key\\s*[=:]"
+    - "ghp_[a-zA-Z0-9]{36}"
+    - "sk-[a-zA-Z0-9]{48}"
+    - "-----BEGIN\\s+(RSA\\s+)?PRIVATE\\s+KEY-----"
+
+patch_limits:
+  max_files: 5
+  max_lines_added: 200
+  max_lines_removed: 200
+  max_diff_bytes: 200000
+
+danger:
+  safe_max: 20
+  weights:
+    per_file: 5
+    per_50_lines_changed: 5
+    per_10kb_diff: 3
+  risky_paths:
+    - glob: "Dockerfile"
+      weight: 25
+      message: "Touches Dockerfile"
+    - glob: "docker-compose.yml"
+      weight: 25
+      message: "Touches docker-compose.yml"
+    - glob: ".github/**"
+      weight: 30
+      message: "Touches GitHub configuration"
+    - glob: "**/infra/**"
+      weight: 30
+      message: "Touches infra directory"
+

@@ -107,3 +107,11 @@ pnpm-lock.yaml
 # Editor directories and files
 .DS_Store
 Thumbs.db
+
+# Agent artifacts
+agent.md
+.agent/
+gemini.md
+AGENTS.md
+GEMINI.md
+.agents/

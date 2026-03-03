@@ -1,0 +1,10 @@
+{
+  "success_criteria": {
+    "validation_must_pass": false,
+    "policy_violations_allowed": 0,
+    "max_danger_score": 30
+  },
+  "expected_category": "npm_install_error",
+  "allowed_fix_types": []
+}
+

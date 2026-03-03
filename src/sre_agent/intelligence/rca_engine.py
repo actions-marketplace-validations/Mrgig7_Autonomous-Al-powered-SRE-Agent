@@ -3,11 +3,13 @@
 Combines classification, similarity search, and context analysis
 to generate root cause hypotheses.
 """
+
 import logging
 import time
-from datetime import datetime
-from uuid import UUID
 
+from sre_agent.intelligence.classifier import FailureClassifier
+from sre_agent.intelligence.embeddings import EmbeddingGenerator, build_failure_text
+from sre_agent.intelligence.vector_store import IncidentVectorStore
 from sre_agent.schemas.context import FailureContextBundle
 from sre_agent.schemas.intelligence import (
     AffectedFile,
@@ -17,9 +19,6 @@ from sre_agent.schemas.intelligence import (
     RCAResult,
     SimilarIncident,
 )
-from sre_agent.intelligence.classifier import FailureClassifier
-from sre_agent.intelligence.embeddings import EmbeddingGenerator, build_failure_text
-from sre_agent.intelligence.vector_store import IncidentVectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +81,7 @@ class RCAEngine:
         )
 
         # Step 5: Generate fix patterns
-        suggested_patterns = self._generate_fix_patterns(
-            classification, similar_incidents
-        )
+        suggested_patterns = self._generate_fix_patterns(classification, similar_incidents)
 
         analysis_time = time.time() - start_time
 
@@ -129,34 +126,36 @@ class RCAEngine:
                     stack_trace_files.add(frame.file)
 
         for file in stack_trace_files:
-            affected.append(AffectedFile(
-                filename=file,
-                relevance_score=0.9,
-                reason="Appears in stack trace",
-                is_in_stack_trace=True,
-                is_recently_changed=file in [f.filename for f in context.changed_files],
-                suggested_action="Review error handling at this location",
-            ))
+            affected.append(
+                AffectedFile(
+                    filename=file,
+                    relevance_score=0.9,
+                    reason="Appears in stack trace",
+                    is_in_stack_trace=True,
+                    is_recently_changed=file in [f.filename for f in context.changed_files],
+                    suggested_action="Review error handling at this location",
+                )
+            )
 
         # Changed files that might be related
         for changed in context.changed_files:
             if changed.filename in stack_trace_files:
                 continue  # Already added
 
-            relevance = self._calculate_file_relevance(
-                changed.filename, classification, context
-            )
+            relevance = self._calculate_file_relevance(changed.filename, classification, context)
             if relevance > 0.3:
-                affected.append(AffectedFile(
-                    filename=changed.filename,
-                    relevance_score=relevance,
-                    reason="Recently changed",
-                    is_in_stack_trace=False,
-                    is_recently_changed=True,
-                    suggested_action=self._suggest_file_action(
-                        changed.filename, classification
-                    ),
-                ))
+                affected.append(
+                    AffectedFile(
+                        filename=changed.filename,
+                        relevance_score=relevance,
+                        reason="Recently changed",
+                        is_in_stack_trace=False,
+                        is_recently_changed=True,
+                        suggested_action=self._suggest_file_action(
+                            changed.filename, classification
+                        ),
+                    )
+                )
 
         # Sort by relevance
         affected.sort(key=lambda x: x.relevance_score, reverse=True)
@@ -172,9 +171,7 @@ class RCAEngine:
 
         # Build text representation for embedding
         error_messages = [e.message for e in context.errors]
-        stack_summaries = [
-            f"{t.exception_type}: {t.message}" for t in context.stack_traces
-        ]
+        stack_summaries = [f"{t.exception_type}: {t.message}" for t in context.stack_traces]
         changed_filenames = [f.filename for f in context.changed_files]
 
         text = build_failure_text(
@@ -191,15 +188,17 @@ class RCAEngine:
         similar = []
         for record, score in results:
             if score >= 0.3:  # Minimum similarity threshold
-                similar.append(SimilarIncident(
-                    incident_id=record.incident_id,
-                    similarity_score=score,
-                    summary=record.summary,
-                    root_cause=record.root_cause,
-                    resolution=record.resolution,
-                    fix_diff=record.fix_diff,
-                    occurred_at=record.occurred_at,
-                ))
+                similar.append(
+                    SimilarIncident(
+                        incident_id=record.incident_id,
+                        similarity_score=score,
+                        summary=record.summary,
+                        root_cause=record.root_cause,
+                        resolution=record.resolution,
+                        fix_diff=record.fix_diff,
+                        occurred_at=record.occurred_at,
+                    )
+                )
 
         return similar
 
@@ -231,26 +230,28 @@ class RCAEngine:
         if similar_incidents:
             best_match = similar_incidents[0]
             if best_match.root_cause and best_match.similarity_score >= 0.7:
-                hypotheses.append(RCAHypothesis(
-                    description=f"Similar to past incident: {best_match.root_cause}",
-                    confidence=best_match.similarity_score * 0.9,
-                    evidence=[
-                        f"Similar incident: {best_match.summary}",
-                        f"Similarity score: {best_match.similarity_score:.2f}",
-                    ],
-                    suggested_fix=best_match.resolution,
-                ))
+                hypotheses.append(
+                    RCAHypothesis(
+                        description=f"Similar to past incident: {best_match.root_cause}",
+                        confidence=best_match.similarity_score * 0.9,
+                        evidence=[
+                            f"Similar incident: {best_match.summary}",
+                            f"Similarity score: {best_match.similarity_score:.2f}",
+                        ],
+                        suggested_fix=best_match.resolution,
+                    )
+                )
 
         # Add secondary hypothesis if available
         if classification.secondary_category:
-            secondary_desc = self._get_category_description(
-                classification.secondary_category
+            secondary_desc = self._get_category_description(classification.secondary_category)
+            hypotheses.append(
+                RCAHypothesis(
+                    description=secondary_desc,
+                    confidence=classification.confidence * 0.7,
+                    evidence=["Secondary pattern detected"],
+                )
             )
-            hypotheses.append(RCAHypothesis(
-                description=secondary_desc,
-                confidence=classification.confidence * 0.7,
-                evidence=["Secondary pattern detected"],
-            ))
 
         # Sort by confidence and return primary + alternatives
         hypotheses.sort(key=lambda h: h.confidence, reverse=True)
@@ -294,24 +295,16 @@ class RCAEngine:
             FailureCategory.DEPENDENCY: (
                 "Dependency issue detected (missing or incompatible package)"
             ),
-            FailureCategory.CODE: (
-                "Code error detected (type error, logic error, or bug)"
-            ),
+            FailureCategory.CODE: ("Code error detected (type error, logic error, or bug)"),
             FailureCategory.CONFIGURATION: (
                 "Configuration issue detected (missing variable or invalid config)"
             ),
-            FailureCategory.TEST: (
-                "Test assertion failure (test logic or assertion issue)"
-            ),
+            FailureCategory.TEST: ("Test assertion failure (test logic or assertion issue)"),
             FailureCategory.FLAKY: (
                 "Potentially flaky failure (timeout or non-deterministic behavior)"
             ),
-            FailureCategory.SECURITY: (
-                "Security scan failure (vulnerability detected)"
-            ),
-            FailureCategory.UNKNOWN: (
-                "Unable to determine specific cause"
-            ),
+            FailureCategory.SECURITY: ("Security scan failure (vulnerability detected)"),
+            FailureCategory.UNKNOWN: ("Unable to determine specific cause"),
         }
         return descriptions.get(category, "Failure detected")
 
@@ -345,27 +338,13 @@ class RCAEngine:
     ) -> str | None:
         """Suggest a fix based on classification."""
         suggestions = {
-            FailureCategory.INFRASTRUCTURE: (
-                "Retry the job or check CI infrastructure status"
-            ),
-            FailureCategory.DEPENDENCY: (
-                "Check package versions and update dependencies"
-            ),
-            FailureCategory.CODE: (
-                "Review the error location and add proper error handling"
-            ),
-            FailureCategory.CONFIGURATION: (
-                "Verify all required environment variables are set"
-            ),
-            FailureCategory.TEST: (
-                "Review test assertions and expected values"
-            ),
-            FailureCategory.FLAKY: (
-                "Consider adding retries or investigating timing issues"
-            ),
-            FailureCategory.SECURITY: (
-                "Review and remediate the security vulnerability"
-            ),
+            FailureCategory.INFRASTRUCTURE: ("Retry the job or check CI infrastructure status"),
+            FailureCategory.DEPENDENCY: ("Check package versions and update dependencies"),
+            FailureCategory.CODE: ("Review the error location and add proper error handling"),
+            FailureCategory.CONFIGURATION: ("Verify all required environment variables are set"),
+            FailureCategory.TEST: ("Review test assertions and expected values"),
+            FailureCategory.FLAKY: ("Consider adding retries or investigating timing issues"),
+            FailureCategory.SECURITY: ("Review and remediate the security vulnerability"),
         }
         return suggestions.get(classification.category)
 
@@ -430,7 +409,9 @@ class RCAEngine:
 
         # Higher relevance for certain file types based on category
         if classification.category == FailureCategory.DEPENDENCY:
-            if any(p in filename for p in ["package.json", "requirements.txt", "Cargo.toml", "go.mod"]):
+            if any(
+                p in filename for p in ["package.json", "requirements.txt", "Cargo.toml", "go.mod"]
+            ):
                 relevance += 0.5
         elif classification.category == FailureCategory.CONFIGURATION:
             if any(p in filename for p in [".env", "config", ".yml", ".yaml", ".json"]):

@@ -1,0 +1,3 @@
+ERR_PNPM_NO_MATCHING_VERSION
+No matching version found for foo-bar@latest
+

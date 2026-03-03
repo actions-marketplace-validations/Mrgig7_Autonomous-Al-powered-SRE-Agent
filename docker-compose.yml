@@ -6,6 +6,15 @@ version: "3.8"
 # Docs: http://localhost:8000/docs
 
 services:
+  sandbox_image:
+    build:
+      context: .
+      dockerfile: docker/sandbox.Dockerfile
+    image: sre-agent-sandbox:scanners-2026-01-20
+    container_name: sre-agent-sandbox-image
+    command: ["sh", "-c", "echo sandbox image built"]
+    restart: "no"
+
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
@@ -51,9 +60,14 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - ENVIRONMENT=dev
       - LOG_LEVEL=INFO
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
       # GitHub Integration
       - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GITHUB_OAUTH_CLIENT_ID=${GITHUB_OAUTH_CLIENT_ID:-}
+      - GITHUB_OAUTH_CLIENT_SECRET=${GITHUB_OAUTH_CLIENT_SECRET:-}
+      - GITHUB_OAUTH_REDIRECT_URI=${GITHUB_OAUTH_REDIRECT_URI:-http://localhost:3000/oauth/github/callback}
+      - GITHUB_OAUTH_REQUIRED_SCOPES=${GITHUB_OAUTH_REQUIRED_SCOPES:-repo,read:user,user:email,workflow}
       # LLM Configuration
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
@@ -78,16 +92,76 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: sre-agent-worker
-    command: celery -A sre_agent.tasks.celery_app worker --loglevel=info
+    command: celery -A sre_agent.celery_app worker --loglevel=info
     environment:
       - DATABASE_URL=postgresql+asyncpg://sre_agent:sre_agent_password@postgres:5432/sre_agent
       - REDIS_URL=redis://redis:6379/0
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - SANDBOX_DOCKER_IMAGE=${SANDBOX_DOCKER_IMAGE:-sre-agent-sandbox:scanners-2026-01-20}
+      - ENABLE_SCANS=${ENABLE_SCANS:-true}
+      - FAIL_ON_SECRETS=${FAIL_ON_SECRETS:-true}
+      - FAIL_ON_VULN_SEVERITY=${FAIL_ON_VULN_SEVERITY:-HIGH}
+      - ARTIFACTS_DIR=${ARTIFACTS_DIR:-/app/artifacts}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     depends_on:
       - api
       - redis
+      - sandbox_image
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - artifacts_data:/app/artifacts
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    container_name: sre-agent-otel-collector
+    command: ["--config=/etc/otel-collector/config.yml"]
+    volumes:
+      - ./observability/otel-collector/config.yml:/etc/otel-collector/config.yml:ro
+    ports:
+      - "4318:4318"
+
+  tempo:
+    image: grafana/tempo:2.4.1
+    container_name: sre-agent-tempo
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+    ports:
+      - "3200:3200"
+
+  prometheus:
+    image: prom/prometheus:v2.49.1
+    container_name: sre-agent-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api
+
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: sre-agent-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+      - tempo
 
   # Ollama (Local LLM - optional)
   ollama:
@@ -105,7 +179,7 @@ services:
               count: all
               capabilities: [gpu]
     profiles:
-      - local-llm  # Only starts with: docker-compose --profile local-llm up
+      - local-llm # Only starts with: docker-compose --profile local-llm up
 
   # Frontend Dashboard
   frontend:
@@ -126,6 +200,9 @@ volumes:
   postgres_data:
   redis_data:
   ollama_data:
+  artifacts_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   default:

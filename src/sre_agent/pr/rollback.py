@@ -2,6 +2,7 @@
 
 Handles creating revert PRs when merged fixes cause issues.
 """
+
 import logging
 
 import httpx
@@ -71,9 +72,7 @@ class RollbackController:
                 timeout=30.0,
             ) as client:
                 # Get the original PR
-                pr_response = await client.get(
-                    f"/repos/{request.repo}/pulls/{request.pr_number}"
-                )
+                pr_response = await client.get(f"/repos/{request.repo}/pulls/{request.pr_number}")
 
                 if pr_response.status_code != 200:
                     return RollbackResult(
@@ -194,9 +193,7 @@ git push origin main
             headers=self._build_headers(),
             timeout=30.0,
         ) as client:
-            response = await client.get(
-                f"/repos/{repo}/pulls/{pr_number}"
-            )
+            response = await client.get(f"/repos/{repo}/pulls/{pr_number}")
 
             if response.status_code != 200:
                 return {"error": response.text}

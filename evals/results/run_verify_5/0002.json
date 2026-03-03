@@ -1,0 +1,122 @@
+{
+  "artifacts": {
+    "classification": {
+      "category": "dependency",
+      "confidence": 0.9,
+      "indicators": [
+        "ModuleNotFoundError",
+        "No\\s*module\\s*named"
+      ],
+      "reasoning": "Python import/dependency error",
+      "secondary_category": null
+    },
+    "expected": {
+      "allowed_fix_types": [
+        "add_dependency",
+        "pin_dependency"
+      ],
+      "expected_category": "python_missing_dependency",
+      "success_criteria": {
+        "max_danger_score": 30,
+        "policy_violations_allowed": 0,
+        "validation_must_pass": true
+      }
+    },
+    "failure": {
+      "category": "python_missing_dependency",
+      "created_at": "2026-01-20",
+      "description": "runtime import fails: pydantic missing",
+      "id": "0002",
+      "notes": "synthetic traceback for missing pydantic dependency",
+      "policy_profile": "default",
+      "public_source_url": null,
+      "repo_language": "python",
+      "source": "synthetic"
+    },
+    "patch_diff": "--- a/pyproject.toml\n+++ b/pyproject.toml\n@@ -6,5 +6,6 @@\n \n [tool.poetry.dependencies]\n python = \"^3.11\"\n+pydantic = \"^1.0.0\"\n requests = \"^2.31.0\"\n",
+    "patch_policy": {
+      "allowed": true,
+      "danger_reasons": [
+        {
+          "code": "file_count",
+          "message": "Files changed",
+          "weight": 5
+        },
+        {
+          "code": "lines_changed",
+          "message": "Lines changed",
+          "weight": 5
+        },
+        {
+          "code": "diff_size",
+          "message": "Diff size",
+          "weight": 3
+        }
+      ],
+      "danger_score": 13,
+      "pr_label": "safe",
+      "violations": []
+    },
+    "plan": {
+      "category": "python_missing_dependency",
+      "confidence": 0.5,
+      "files": [
+        "pyproject.toml"
+      ],
+      "operations": [
+        {
+          "details": {
+            "name": "pydantic",
+            "spec": "^1.0.0"
+          },
+          "evidence": [
+            "File \"/workspace/app/main.py\", line 1, in <module>",
+            "import pydantic",
+            "ModuleNotFoundError: No module named 'pydantic'"
+          ],
+          "file": "pyproject.toml",
+          "rationale": "Add the missing dependency referenced by the failure logs",
+          "type": "pin_dependency"
+        }
+      ],
+      "root_cause": "offline mock plan for python_missing_dependency"
+    },
+    "plan_policy": {
+      "allowed": true,
+      "danger_reasons": [
+        {
+          "code": "file_count",
+          "message": "Files proposed for change",
+          "weight": 5
+        },
+        {
+          "code": "operation_type",
+          "message": "Operation: pin_dependency",
+          "weight": 5
+        }
+      ],
+      "danger_score": 10,
+      "pr_label": "safe",
+      "violations": []
+    }
+  },
+  "result": {
+    "case_id": "0002",
+    "category": "python_missing_dependency",
+    "classification_category": "dependency",
+    "danger_score": 13,
+    "diff_too_large": false,
+    "expected_category": "python_missing_dependency",
+    "expected_validation_must_pass": true,
+    "forbidden_path_touched": false,
+    "notes": "",
+    "patch_generated": true,
+    "patch_touches_outside_plan": false,
+    "plan_valid": true,
+    "policy_violations": [],
+    "pr_label": "safe",
+    "time_ms": 1,
+    "validation_mode": "mock",
+    "validation_passed": true
+  }
+}

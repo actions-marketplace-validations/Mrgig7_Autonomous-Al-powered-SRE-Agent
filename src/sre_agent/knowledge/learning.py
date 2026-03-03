@@ -2,15 +2,14 @@
 
 Learns from resolved incidents to improve future fix generation.
 """
+
 import logging
 from collections import defaultdict
-from datetime import datetime
 from typing import Any
 
 from sre_agent.schemas.knowledge import (
     FixPattern,
     IncidentRecord,
-    IncidentStatus,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,9 +28,7 @@ class LearningPipeline:
     def __init__(self):
         """Initialize learning pipeline."""
         # Track statistics
-        self._category_stats: dict[str, dict] = defaultdict(
-            lambda: {"success": 0, "total": 0}
-        )
+        self._category_stats: dict[str, dict] = defaultdict(lambda: {"success": 0, "total": 0})
         self._fix_patterns: dict[str, FixPattern] = {}
 
     async def record_resolution(

@@ -2,12 +2,11 @@
 
 Handles git operations and diff application.
 """
+
 import logging
-import os
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any
 
 from sre_agent.schemas.validation import PatchResult
 
@@ -220,9 +219,9 @@ class RepoManager:
         lines = diff.strip().split("\n")
 
         # Check for required headers
-        has_old = any(l.startswith("---") for l in lines[:10])
-        has_new = any(l.startswith("+++") for l in lines[:10])
-        has_hunk = any(l.startswith("@@") for l in lines)
+        has_old = any(line.startswith("---") for line in lines[:10])
+        has_new = any(line.startswith("+++") for line in lines[:10])
+        has_hunk = any(line.startswith("@@") for line in lines)
 
         return has_old and has_new and has_hunk
 
@@ -276,9 +275,7 @@ class RepoManager:
 
         # Filter out __pycache__ and node_modules
         test_files = [
-            f
-            for f in test_files
-            if "__pycache__" not in str(f) and "node_modules" not in str(f)
+            f for f in test_files if "__pycache__" not in str(f) and "node_modules" not in str(f)
         ]
 
         return test_files

@@ -1,0 +1,76 @@
+{
+  "artifacts": {
+    "classification": {
+      "category": "test",
+      "confidence": 0.85,
+      "indicators": [
+        "AssertionError"
+      ],
+      "reasoning": "Test assertion failure",
+      "secondary_category": null
+    },
+    "expected": {
+      "allowed_fix_types": [],
+      "expected_category": "java_test_failure",
+      "success_criteria": {
+        "max_danger_score": 30,
+        "policy_violations_allowed": 0,
+        "validation_must_pass": false
+      }
+    },
+    "failure": {
+      "category": "java_test_failure",
+      "created_at": "2026-01-20",
+      "description": "JUnit test failing due to assertion mismatch",
+      "id": "0025",
+      "notes": "synthetic JUnit assertion failure (unsupported by deterministic patcher)",
+      "policy_profile": "default",
+      "public_source_url": null,
+      "repo_language": "java",
+      "source": "synthetic"
+    },
+    "patch_diff": "",
+    "patch_policy": null,
+    "plan": {
+      "category": "java_test_failure",
+      "confidence": 0.5,
+      "files": [
+        "src/app.py"
+      ],
+      "operations": [],
+      "root_cause": "offline mock plan for java_test_failure"
+    },
+    "plan_policy": {
+      "allowed": true,
+      "danger_reasons": [
+        {
+          "code": "file_count",
+          "message": "Files proposed for change",
+          "weight": 5
+        }
+      ],
+      "danger_score": 5,
+      "pr_label": "safe",
+      "violations": []
+    }
+  },
+  "result": {
+    "case_id": "0025",
+    "category": "java_test_failure",
+    "classification_category": "test",
+    "danger_score": 5,
+    "diff_too_large": false,
+    "expected_category": "java_test_failure",
+    "expected_validation_must_pass": false,
+    "forbidden_path_touched": false,
+    "notes": "",
+    "patch_generated": false,
+    "patch_touches_outside_plan": false,
+    "plan_valid": true,
+    "policy_violations": [],
+    "pr_label": "safe",
+    "time_ms": 7,
+    "validation_mode": "mock",
+    "validation_passed": false
+  }
+}

@@ -3,6 +3,7 @@
 These schemas represent the canonical format for pipeline events
 after normalization from various CI/CD providers.
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, Literal
@@ -148,7 +149,7 @@ class EventResponse(BaseModel):
 class WebhookResponse(BaseModel):
     """Standard webhook response."""
 
-    status: Literal["accepted", "ignored", "error"]
+    status: Literal["accepted", "ignored", "error", "duplicate_ignored", "throttled_delayed"]
     message: str
     event_id: UUID | None = None
     correlation_id: str | None = None

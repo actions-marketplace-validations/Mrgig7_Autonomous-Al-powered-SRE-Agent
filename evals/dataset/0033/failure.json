@@ -1,0 +1,12 @@
+{
+  "id": "0033",
+  "source": "synthetic",
+  "repo_language": "docker",
+  "category": "docker_pin_base_image",
+  "description": "Docker build fails because base image tag does not exist",
+  "policy_profile": "default",
+  "created_at": "2026-01-21",
+  "notes": "synthetic docker base image pin",
+  "public_source_url": null
+}
+

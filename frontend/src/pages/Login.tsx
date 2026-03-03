@@ -2,9 +2,10 @@ import { useState } from 'react';
 
 interface LoginProps {
   onLogin: (email: string, password: string) => Promise<void>;
+  onGitHubLogin: () => Promise<void>;
 }
 
-export default function Login({ onLogin }: LoginProps) {
+export default function Login({ onLogin, onGitHubLogin }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -24,11 +25,25 @@ export default function Login({ onLogin }: LoginProps) {
     }
   };
 
+  const handleGitHubLogin = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      await onGitHubLogin();
+    } catch (err: any) {
+      setError(err.message || 'GitHub login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="login-page">
       <div className="login-container">
         <div className="login-header">
-          <h1>🔧 SRE Agent</h1>
+          <h1>SRE Agent</h1>
           <p>Self-Healing CI/CD Platform</p>
         </div>
 
@@ -52,7 +67,7 @@ export default function Login({ onLogin }: LoginProps) {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="********"
               required
             />
           </div>
@@ -65,11 +80,11 @@ export default function Login({ onLogin }: LoginProps) {
         </form>
 
         <div className="login-footer">
-          <a href="#" className="oauth-link">
-            <span>🔗</span> Sign in with GitHub
+          <a href="#" className="oauth-link" onClick={handleGitHubLogin}>
+            <span>GitHub</span> Sign in with GitHub
           </a>
           <a href="#" className="oauth-link">
-            <span>📧</span> Sign in with Google
+            <span>Google</span> Sign in with Google
           </a>
         </div>
       </div>

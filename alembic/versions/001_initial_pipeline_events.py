@@ -1,15 +1,18 @@
 """Initial pipeline_events table
 
 Revision ID: 001
-Revises: 
+Revises:
 Create Date: 2026-01-09
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+from typing import Union
+
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "001_initial_pipeline_events"

@@ -1,10 +1,13 @@
 """Schemas for sandbox validation results."""
-from datetime import datetime
+
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+from sre_agent.adapters.base import ValidationStep
+from sre_agent.schemas.scans import ScanSummary
 
 
 class ValidationStatus(str, Enum):
@@ -70,7 +73,7 @@ class PatchResult(BaseModel):
 class SandboxConfig(BaseModel):
     """Configuration for sandbox execution."""
 
-    docker_image: str = "python:3.11-slim"
+    docker_image: str = "sre-agent-sandbox:scanners-2026-01-20"
     timeout_seconds: int = 300
     memory_limit: str = "512m"
     cpu_limit: float = 1.0
@@ -95,6 +98,14 @@ class ValidationRequest(BaseModel):
     config: SandboxConfig = Field(
         default_factory=SandboxConfig,
         description="Sandbox configuration",
+    )
+    adapter_name: str | None = Field(
+        None,
+        description="Selected adapter name (optional)",
+    )
+    validation_steps: list[ValidationStep] | None = Field(
+        None,
+        description="Explicit validation steps to run in the sandbox (optional)",
     )
 
 
@@ -137,12 +148,16 @@ class ValidationResult(BaseModel):
     )
     docker_image: str | None = Field(None, description="Docker image used")
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(UTC),
         description="When validation started",
     )
     completed_at: datetime | None = Field(
         None,
         description="When validation completed",
+    )
+    scans: ScanSummary | None = Field(
+        None,
+        description="Supply-chain scan summaries (redacted)",
     )
 
     @property

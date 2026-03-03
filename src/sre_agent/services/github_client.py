@@ -7,10 +7,12 @@ Uses GitHub REST API v3 to:
 
 Reference: https://docs.github.com/en/rest/actions
 """
+
+import base64
 import logging
 import zipfile
 from io import BytesIO
-from typing import Any, AsyncIterator
+from typing import Any
 
 import httpx
 
@@ -63,9 +65,7 @@ class GitHubClient:
         self.base_url = (base_url or settings.github_api_base_url).rstrip("/")
 
         if not self.token:
-            logger.warning(
-                "GitHub token not configured - API calls will be rate limited"
-            )
+            logger.warning("GitHub token not configured - API calls will be rate limited")
 
         self._client: httpx.AsyncClient | None = None
 
@@ -323,3 +323,61 @@ class GitHubClient:
         """Get current rate limit status."""
         response = await self._request("GET", "/rate_limit")
         return response.json()
+
+    async def get_user_repositories(
+        self,
+        *,
+        per_page: int = 100,
+        sort: str = "updated",
+    ) -> list[dict[str, Any]]:
+        """List repositories visible to the authenticated user."""
+        response = await self._request(
+            "GET",
+            "/user/repos",
+            params={
+                "per_page": per_page,
+                "sort": sort,
+            },
+        )
+        return response.json()
+
+    async def get_repository(self, repo: str) -> dict[str, Any]:
+        """Fetch repository metadata and caller permissions."""
+        response = await self._request(
+            "GET",
+            f"/repos/{repo}",
+        )
+        return response.json()
+
+    async def get_file_content(self, repo: str, path: str, ref: str | None = None) -> str | None:
+        """Fetch text content for a repository file via GitHub contents API."""
+        params: dict[str, str] = {}
+        if ref:
+            params["ref"] = ref
+
+        try:
+            response = await self._request(
+                "GET",
+                f"/repos/{repo}/contents/{path}",
+                params=params or None,
+            )
+        except GitHubNotFoundError:
+            return None
+
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise GitHubAPIError("Unexpected GitHub contents API response shape")
+
+        encoding = payload.get("encoding")
+        content = payload.get("content")
+        if not isinstance(content, str):
+            raise GitHubAPIError("Repository file response missing content")
+
+        if encoding == "base64":
+            try:
+                decoded = base64.b64decode(content, validate=False)
+                return decoded.decode("utf-8")
+            except Exception as exc:
+                raise GitHubAPIError(f"Failed to decode base64 file content: {exc}") from exc
+
+        return content

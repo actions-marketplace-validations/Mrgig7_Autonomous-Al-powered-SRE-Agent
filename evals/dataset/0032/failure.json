@@ -1,0 +1,12 @@
+{
+  "id": "0032",
+  "source": "synthetic",
+  "repo_language": "go",
+  "category": "go_add_missing_module",
+  "description": "Go build fails because a module dependency is missing from go.mod",
+  "policy_profile": "default",
+  "created_at": "2026-01-21",
+  "notes": "synthetic go missing module require",
+  "public_source_url": null
+}
+

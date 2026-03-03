@@ -1,0 +1,13 @@
+npm ERR! code ERESOLVE
+npm ERR! ERESOLVE unable to resolve dependency tree
+npm ERR!
+npm ERR! While resolving: web@1.0.0
+npm ERR! Found: react@18.2.0
+npm ERR! node_modules/react
+npm ERR!   react@\"18.2.0\" from the root project
+npm ERR!
+npm ERR! Could not resolve dependency:
+npm ERR! peer react@\"^17.0.0\" from some-legacy-lib@1.0.0
+npm ERR! node_modules/some-legacy-lib
+npm ERR!   some-legacy-lib@\"1.0.0\" from the root project
+

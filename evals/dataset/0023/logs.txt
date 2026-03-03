@@ -1,0 +1,3 @@
+Step 6/9 : COPY ./dist/app /app
+COPY failed: file not found in build context or excluded by .dockerignore: stat dist/app: file does not exist
+

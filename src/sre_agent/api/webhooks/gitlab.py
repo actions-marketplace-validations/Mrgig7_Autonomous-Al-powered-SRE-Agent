@@ -7,17 +7,24 @@ async processing tasks.
 
 import json
 import logging
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sre_agent.core.logging import correlation_id_ctx
+from sre_agent.config import get_settings
+from sre_agent.core.logging import correlation_id_ctx, delivery_id_ctx
+from sre_agent.core.redis_service import get_redis_service
 from sre_agent.database import get_db_session
 from sre_agent.models.events import EventStatus
+from sre_agent.observability.tracing import inject_trace_headers, start_span
+from sre_agent.ops.metrics import inc
 from sre_agent.providers import ProviderRegistry, ProviderType
 from sre_agent.schemas.normalized import WebhookResponse
 from sre_agent.services.event_store import EventStore
+from sre_agent.services.webhook_delivery_store import (
+    WebhookDeliveryStore,
+    compute_fallback_delivery_id,
+)
 from sre_agent.tasks.dispatch import process_pipeline_event
 
 logger = logging.getLogger(__name__)
@@ -54,14 +61,11 @@ async def gitlab_webhook(
         - 400: Invalid payload
         - 401: Invalid token
     """
-    # Generate correlation ID
-    delivery_id = str(uuid4())
-    correlation_id_ctx.set(delivery_id)
-    
+    delivery_id = "gitlab"
     # Get raw body
     raw_body = await request.body()
     headers = dict(request.headers)
-    
+
     # Get provider
     try:
         provider = ProviderRegistry.get_provider(ProviderType.GITLAB)
@@ -71,10 +75,10 @@ async def gitlab_webhook(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="GitLab provider not available",
         )
-    
+
     # Verify webhook
     verification = provider.verify_webhook(headers, raw_body)
-    
+
     if not verification.valid:
         logger.warning(
             "GitLab webhook verification failed",
@@ -84,9 +88,9 @@ async def gitlab_webhook(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=verification.error or "Invalid webhook token",
         )
-    
+
     event_type = verification.event_type
-    
+
     logger.info(
         "Received GitLab webhook",
         extra={
@@ -94,7 +98,7 @@ async def gitlab_webhook(
             "delivery_id": delivery_id,
         },
     )
-    
+
     # Parse JSON payload
     try:
         payload = json.loads(raw_body)
@@ -107,7 +111,60 @@ async def gitlab_webhook(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid JSON payload",
         )
-    
+
+    delivery_id = compute_fallback_delivery_id(payload, provider="gitlab")
+    correlation_id_ctx.set(delivery_id)
+    delivery_id_ctx.set(delivery_id)
+
+    repo_hint = None
+    project = payload.get("project") if isinstance(payload, dict) else None
+    if isinstance(project, dict):
+        repo_hint = project.get("path_with_namespace") or project.get("name")
+
+    delivery_store = WebhookDeliveryStore(session)
+    is_new_delivery = await delivery_store.record_delivery(
+        delivery_id=delivery_id,
+        event_type=str(event_type or "unknown"),
+        repository=str(repo_hint) if repo_hint else None,
+    )
+    if not is_new_delivery:
+        inc(
+            "webhook_deduped",
+            attributes={"provider": "gitlab", "repo": str(repo_hint or "unknown")},
+        )
+        return WebhookResponse(
+            status="duplicate_ignored",
+            message="Duplicate webhook delivery ignored",
+            correlation_id=delivery_id,
+        )
+
+    redis_service = get_redis_service()
+    settings = get_settings()
+    repo_rate_limit = int(getattr(settings, "repo_webhook_rate_limit_per_minute", 30))
+    allowed, current, retry_after = await redis_service.check_rate_limit(
+        key=f"webhook:repo:{repo_hint or 'unknown'}",
+        limit=repo_rate_limit,
+        window_seconds=60,
+    )
+    if not allowed:
+        inc(
+            "pipeline_throttled",
+            attributes={
+                "provider": "gitlab",
+                "repo": str(repo_hint or "unknown"),
+                "stage": "webhook",
+            },
+        )
+        logger.warning(
+            "Webhook throttled; delaying enqueue",
+            extra={
+                "repo": repo_hint,
+                "delivery_id": delivery_id,
+                "current": current,
+                "retry_after": retry_after,
+            },
+        )
+
     # Filter for supported event types
     object_kind = payload.get("object_kind", "")
     if object_kind not in ("pipeline", "build"):
@@ -120,7 +177,7 @@ async def gitlab_webhook(
             message=f"Event type '{object_kind}' is not processed",
             correlation_id=delivery_id,
         )
-    
+
     # Check if we should process this event
     should_process, reason = provider.should_process(payload)
     if not should_process:
@@ -133,7 +190,7 @@ async def gitlab_webhook(
             message=reason,
             correlation_id=delivery_id,
         )
-    
+
     # Normalize the event
     try:
         normalized_event = provider.normalize_event(payload, delivery_id)
@@ -146,11 +203,15 @@ async def gitlab_webhook(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to normalize event: {e}",
         )
-    
+
     # Store the event idempotently
     event_store = EventStore(session)
     try:
-        stored_event, is_new = await event_store.store_event(normalized_event)
+        with start_span(
+            "store_event",
+            attributes={"delivery_id": delivery_id, "event_type": event_type},
+        ):
+            stored_event, is_new = await event_store.store_event(normalized_event)
     except Exception as e:
         logger.error(
             "Failed to store GitLab event",
@@ -162,7 +223,7 @@ async def gitlab_webhook(
             detail="Database temporarily unavailable",
             headers={"Retry-After": "60"},
         )
-    
+
     # If duplicate, don't dispatch again
     if not is_new:
         logger.info(
@@ -178,17 +239,50 @@ async def gitlab_webhook(
             event_id=stored_event.id,
             correlation_id=delivery_id,
         )
-    
+
     # Dispatch async processing task
     try:
         await event_store.update_status(stored_event.id, EventStatus.DISPATCHED)
         await session.commit()
-        
-        process_pipeline_event.delay(
-            event_id=str(stored_event.id),
-            correlation_id=delivery_id,
-        )
-        
+
+        headers = inject_trace_headers()
+
+        if not allowed and retry_after > 0:
+            inc(
+                "pipeline_throttled",
+                attributes={
+                    "provider": "gitlab",
+                    "repo": str(repo_hint or "unknown"),
+                    "stage": "enqueue_delay",
+                },
+            )
+            from sre_agent.observability.metrics import METRICS
+
+            METRICS.pipeline_throttled_total.labels(scope="repo").inc()
+            with start_span(
+                "enqueue_pipeline",
+                attributes={"delivery_id": delivery_id, "failure_id": str(stored_event.id)},
+            ):
+                process_pipeline_event.apply_async(
+                    kwargs={"event_id": str(stored_event.id), "correlation_id": delivery_id},
+                    countdown=retry_after,
+                    headers=headers,
+                )
+            return WebhookResponse(
+                status="throttled_delayed",
+                message=f"Event accepted but throttled; delayed {retry_after}s",
+                event_id=stored_event.id,
+                correlation_id=delivery_id,
+            )
+        with start_span(
+            "enqueue_pipeline",
+            attributes={"delivery_id": delivery_id, "failure_id": str(stored_event.id)},
+        ):
+            process_pipeline_event.apply_async(
+                kwargs={"event_id": str(stored_event.id), "correlation_id": delivery_id},
+                headers=headers,
+            )
+
         logger.info(
             "GitLab event dispatched for processing",
             extra={
@@ -203,7 +297,7 @@ async def gitlab_webhook(
             extra={"error": str(e), "event_id": str(stored_event.id)},
             exc_info=True,
         )
-    
+
     return WebhookResponse(
         status="accepted",
         message="Event accepted and queued for processing",

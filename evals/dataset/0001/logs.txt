@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.8, pytest-7.4.4
+collected 1 item
+
+tests/test_imports.py F                                                      [100%]
+
+=================================== FAILURES ===================================
+______________________________ test_import_requests ___________________________
+
+    def test_import_requests():
+>       import requests
+E       ModuleNotFoundError: No module named 'requests'
+
+Traceback (most recent call last):
+  File "/workspace/tests/test_imports.py", line 2, in test_import_requests
+    import requests
+ModuleNotFoundError: No module named 'requests'
+
+=========================== short test summary info ============================
+FAILED tests/test_imports.py::test_import_requests - ModuleNotFoundError: No module named 'requests'
+

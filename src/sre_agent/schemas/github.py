@@ -5,6 +5,7 @@ Reference: https://docs.github.com/en/webhooks/webhook-events-and-payloads
 We focus on the workflow_job event which fires when a job starts,
 completes, or fails. We only process failed jobs.
 """
+
 from datetime import datetime
 from typing import Any, Literal
 
@@ -47,7 +48,7 @@ class GitHubWorkflowJobStep(BaseModel):
 
 class GitHubWorkflowJob(BaseModel):
     """The workflow_job object from GitHub webhook.
-    
+
     Reference: https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_job
     """
 
@@ -58,9 +59,12 @@ class GitHubWorkflowJob(BaseModel):
     head_branch: str
     head_sha: str
     status: Literal["queued", "in_progress", "completed", "waiting"]
-    conclusion: Literal[
-        "success", "failure", "cancelled", "skipped", "neutral", "timed_out", "action_required"
-    ] | None = None
+    conclusion: (
+        Literal[
+            "success", "failure", "cancelled", "skipped", "neutral", "timed_out", "action_required"
+        ]
+        | None
+    ) = None
     created_at: datetime
     started_at: datetime | None = None
     completed_at: datetime | None = None
@@ -79,7 +83,7 @@ class GitHubWorkflowJob(BaseModel):
 class GitHubWorkflowJobPayload(BaseModel):
     """
     Complete webhook payload for workflow_job events.
-    
+
     This is the top-level structure received from GitHub.
     """
 
@@ -97,7 +101,7 @@ class GitHubWorkflowJobPayload(BaseModel):
 
 class GitHubWorkflowRun(BaseModel):
     """The workflow_run object from GitHub webhook.
-    
+
     Reference: https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_run
     """
 
@@ -106,9 +110,12 @@ class GitHubWorkflowRun(BaseModel):
     head_branch: str
     head_sha: str
     status: Literal["queued", "in_progress", "completed"]
-    conclusion: Literal[
-        "success", "failure", "neutral", "cancelled", "skipped", "timed_out", "action_required"
-    ] | None = None
+    conclusion: (
+        Literal[
+            "success", "failure", "neutral", "cancelled", "skipped", "timed_out", "action_required"
+        ]
+        | None
+    ) = None
     workflow_id: int
     run_number: int
     run_attempt: int = 1
@@ -121,7 +128,7 @@ class GitHubWorkflowRun(BaseModel):
 class GitHubWorkflowRunPayload(BaseModel):
     """
     Complete webhook payload for workflow_run events.
-    
+
     Note: We primarily use workflow_job for granular failure tracking,
     but workflow_run can be used for run-level summaries.
     """

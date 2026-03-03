@@ -1,0 +1,12 @@
+{
+  "id": "0006",
+  "source": "synthetic",
+  "repo_language": "python",
+  "category": "python_missing_dependency",
+  "description": "runtime import fails: redis client missing",
+  "policy_profile": "default",
+  "created_at": "2026-01-20",
+  "notes": "synthetic missing redis import",
+  "public_source_url": null
+}
+

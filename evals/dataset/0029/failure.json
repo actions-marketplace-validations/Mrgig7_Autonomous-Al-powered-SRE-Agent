@@ -1,0 +1,12 @@
+{
+  "id": "0029",
+  "source": "synthetic",
+  "repo_language": "java",
+  "category": "java_dependency_version_missing",
+  "description": "Maven build fails because a dependency version is missing",
+  "policy_profile": "default",
+  "created_at": "2026-01-21",
+  "notes": "synthetic java missing dependency version",
+  "public_source_url": null
+}
+

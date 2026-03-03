@@ -1,6 +1,6 @@
 """Unit tests for the log parser."""
-import pytest
 
+import pytest
 from sre_agent.schemas.context import LogLanguage, Severity
 from sre_agent.services.log_parser import LogParser
 

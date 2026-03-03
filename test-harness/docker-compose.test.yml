@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  sample-app-backend:
+    build:
+      context: ./sample-app/backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://task_user:task_password@sample-app-postgres:5432/task_db
+      SECRET_KEY: harness-secret
+    ports:
+      - "8001:8000"
+    depends_on:
+      - sample-app-postgres
+      - sample-app-redis
+
+  sample-app-frontend:
+    build:
+      context: ./sample-app/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8081:80"
+    depends_on:
+      - sample-app-backend
+
+  sample-app-postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: task_user
+      POSTGRES_PASSWORD: task_password
+      POSTGRES_DB: task_db
+    ports:
+      - "5434:5432"
+
+  sample-app-redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+

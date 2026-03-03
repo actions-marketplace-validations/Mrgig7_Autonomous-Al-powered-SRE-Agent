@@ -1,0 +1,12 @@
+{
+  "id": "0027",
+  "source": "synthetic",
+  "repo_language": "node",
+  "category": "node_lockfile_mismatch",
+  "description": "npm ci fails because package-lock is out of date",
+  "policy_profile": "default",
+  "created_at": "2026-01-21",
+  "notes": "synthetic node lockfile mismatch",
+  "public_source_url": null
+}
+

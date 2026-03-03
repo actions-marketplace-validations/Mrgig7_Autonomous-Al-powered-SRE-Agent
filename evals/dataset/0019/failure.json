@@ -1,0 +1,12 @@
+{
+  "id": "0019",
+  "source": "synthetic",
+  "repo_language": "python",
+  "category": "pytest_test_failure",
+  "description": "pytest failing due to assertion mismatch",
+  "policy_profile": "default",
+  "created_at": "2026-01-20",
+  "notes": "synthetic pytest assertion failure (unsupported by deterministic patcher)",
+  "public_source_url": null
+}
+

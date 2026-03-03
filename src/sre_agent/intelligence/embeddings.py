@@ -2,6 +2,7 @@
 
 Uses sentence-transformers for generating embeddings of failure context.
 """
+
 import logging
 from typing import Any
 

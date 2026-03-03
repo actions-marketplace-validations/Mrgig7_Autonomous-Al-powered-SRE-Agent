@@ -3,6 +3,7 @@
 These Celery tasks handle async processing of pipeline events,
 dispatching them to downstream components (Observability Context Builder).
 """
+
 import logging
 from typing import Any
 
@@ -27,6 +28,9 @@ class BaseTask(Task):
         einfo: Any,
     ) -> None:
         """Handle task failure."""
+        from sre_agent.observability.metrics import METRICS
+
+        METRICS.celery_tasks_total.labels(task=str(self.name), status="fail").inc()
         logger.error(
             "Task failed",
             extra={
@@ -48,6 +52,9 @@ class BaseTask(Task):
         einfo: Any,
     ) -> None:
         """Handle task retry."""
+        from sre_agent.observability.metrics import METRICS
+
+        METRICS.celery_tasks_total.labels(task=str(self.name), status="retry").inc()
         logger.warning(
             "Task retrying",
             extra={
@@ -66,6 +73,9 @@ class BaseTask(Task):
         kwargs: dict,
     ) -> None:
         """Handle task success."""
+        from sre_agent.observability.metrics import METRICS
+
+        METRICS.celery_tasks_total.labels(task=str(self.name), status="success").inc()
         logger.info(
             "Task completed successfully",
             extra={
@@ -109,12 +119,75 @@ def process_pipeline_event(self, event_id: str, correlation_id: str | None = Non
             "task_id": self.request.id,
         },
     )
+    from sre_agent.observability.metrics import METRICS
 
-    # Trigger Observability Context Builder
+    METRICS.celery_tasks_total.labels(task=str(self.name), status="started").inc()
+
+    from sre_agent.core.logging import delivery_id_ctx, failure_id_ctx
+
+    delivery_id_ctx.set(correlation_id)
+    failure_id_ctx.set(event_id)
+
+    from sre_agent.observability.tracing import (
+        attach_context,
+        init_tracing,
+        inject_trace_headers,
+        start_span,
+    )
+
+    init_tracing(service_name="sre-agent-worker")
+
+    import asyncio
+
+    from sre_agent.core.redis_service import get_redis_service
+
+    async def _check_once() -> bool:
+        redis_service = get_redis_service()
+        is_dup, _ = await redis_service.check_dedup(
+            operation="dispatch_event",
+            payload_hash=event_id,
+            ttl_seconds=3600,
+        )
+        if is_dup:
+            return False
+        await redis_service.mark_processed(
+            operation="dispatch_event",
+            payload_hash=event_id,
+            result_id=event_id,
+            ttl_seconds=3600,
+        )
+        return True
+
+    should_dispatch = asyncio.get_event_loop().run_until_complete(_check_once())
+    if not should_dispatch:
+        from sre_agent.ops.metrics import inc
+
+        inc("pipeline_skipped", attributes={"stage": "dispatch", "event_id": event_id})
+        logger.info(
+            "Dispatch deduped; already dispatched recently",
+            extra={"event_id": event_id, "correlation_id": correlation_id},
+        )
+        return {
+            "event_id": event_id,
+            "status": "skipped",
+            "message": "Duplicate dispatch ignored",
+        }
+
     from sre_agent.tasks.context_tasks import build_failure_context
 
-    # Chain to context building task
-    build_failure_context.delay(event_id, correlation_id)
+    with attach_context(getattr(self.request, "headers", None)):
+        with start_span(
+            "enqueue_pipeline",
+            attributes={
+                "delivery_id": correlation_id,
+                "failure_id": event_id,
+            },
+        ):
+            headers = inject_trace_headers()
+            build_failure_context.apply_async(
+                kwargs={"event_id": event_id, "correlation_id": correlation_id},
+                headers=headers,
+            )
 
     logger.info(
         "Dispatched to context builder",

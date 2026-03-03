@@ -1,0 +1,128 @@
+{
+  "artifacts": {
+    "classification": {
+      "category": "unknown",
+      "confidence": 0.0,
+      "indicators": [],
+      "reasoning": "No classification patterns matched",
+      "secondary_category": null
+    },
+    "expected": {
+      "allowed_fix_types": [
+        "update_config"
+      ],
+      "expected_category": "docker_pin_base_image",
+      "success_criteria": {
+        "max_danger_score": 30,
+        "policy_violations_allowed": 0,
+        "validation_must_pass": true
+      }
+    },
+    "failure": {
+      "category": "docker_pin_base_image",
+      "created_at": "2026-01-21",
+      "description": "Docker build fails because base image tag does not exist",
+      "id": "0033",
+      "notes": "synthetic docker base image pin",
+      "policy_profile": "default",
+      "public_source_url": null,
+      "repo_language": "docker",
+      "source": "synthetic"
+    },
+    "patch_diff": "--- a/Dockerfile\n+++ b/Dockerfile\n@@ -1,3 +1,3 @@\n-FROM ubuntu:99.99\n+FROM ubuntu:22.04\n RUN echo hello\n",
+    "patch_policy": {
+      "allowed": true,
+      "danger_reasons": [
+        {
+          "code": "risky_path",
+          "message": "Touches Dockerfile",
+          "weight": 25
+        },
+        {
+          "code": "file_count",
+          "message": "Files changed",
+          "weight": 5
+        },
+        {
+          "code": "lines_changed",
+          "message": "Lines changed",
+          "weight": 5
+        },
+        {
+          "code": "diff_size",
+          "message": "Diff size",
+          "weight": 3
+        }
+      ],
+      "danger_score": 38,
+      "pr_label": "needs-review",
+      "violations": []
+    },
+    "plan": {
+      "category": "docker_pin_base_image",
+      "confidence": 0.5,
+      "files": [
+        "Dockerfile"
+      ],
+      "operations": [
+        {
+          "details": {
+            "pin_base_image": {
+              "image": "ubuntu",
+              "tag": "22.04"
+            }
+          },
+          "evidence": [
+            "failed to solve: ubuntu:99.99: not found: manifest unknown"
+          ],
+          "file": "Dockerfile",
+          "rationale": "Pin a stable base image tag instead of an invalid/unstable reference",
+          "type": "update_config"
+        }
+      ],
+      "root_cause": "offline mock plan for docker_pin_base_image"
+    },
+    "plan_policy": {
+      "allowed": true,
+      "danger_reasons": [
+        {
+          "code": "risky_path",
+          "message": "Touches Dockerfile",
+          "weight": 25
+        },
+        {
+          "code": "file_count",
+          "message": "Files proposed for change",
+          "weight": 5
+        },
+        {
+          "code": "operation_type",
+          "message": "Operation: update_config",
+          "weight": 8
+        }
+      ],
+      "danger_score": 38,
+      "pr_label": "needs-review",
+      "violations": []
+    }
+  },
+  "result": {
+    "case_id": "0033",
+    "category": "docker_pin_base_image",
+    "classification_category": "unknown",
+    "danger_score": 38,
+    "diff_too_large": false,
+    "expected_category": "docker_pin_base_image",
+    "expected_validation_must_pass": true,
+    "forbidden_path_touched": false,
+    "notes": "",
+    "patch_generated": true,
+    "patch_touches_outside_plan": false,
+    "plan_valid": true,
+    "policy_violations": [],
+    "pr_label": "needs-review",
+    "time_ms": 2,
+    "validation_mode": "mock",
+    "validation_passed": true
+  }
+}

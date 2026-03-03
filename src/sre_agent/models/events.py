@@ -1,11 +1,13 @@
 """SQLAlchemy models for pipeline events."""
+
 from datetime import datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, Index, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 

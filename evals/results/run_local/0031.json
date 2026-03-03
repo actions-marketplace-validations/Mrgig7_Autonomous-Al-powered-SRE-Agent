@@ -1,0 +1,97 @@
+{
+  "artifacts": {
+    "classification": {
+      "category": "unknown",
+      "confidence": 0.0,
+      "indicators": [],
+      "reasoning": "No classification patterns matched",
+      "secondary_category": null
+    },
+    "expected": {
+      "allowed_fix_types": [
+        "update_config"
+      ],
+      "expected_category": "go_mod_tidy",
+      "success_criteria": {
+        "max_danger_score": 30,
+        "policy_violations_allowed": 0,
+        "validation_must_pass": true
+      }
+    },
+    "failure": {
+      "category": "go_mod_tidy",
+      "created_at": "2026-01-21",
+      "description": "Go build fails because go.sum is missing entries",
+      "id": "0031",
+      "notes": "synthetic go mod tidy",
+      "policy_profile": "default",
+      "public_source_url": null,
+      "repo_language": "go",
+      "source": "synthetic"
+    },
+    "patch_diff": "",
+    "patch_policy": {
+      "allowed": true,
+      "danger_reasons": [],
+      "danger_score": 0,
+      "pr_label": "safe",
+      "violations": []
+    },
+    "plan": {
+      "category": "go_mod_tidy",
+      "confidence": 0.5,
+      "files": [
+        "go.sum"
+      ],
+      "operations": [
+        {
+          "details": {},
+          "evidence": [
+            "go: github.com/acme/foo@v1.2.3: missing go.sum entry"
+          ],
+          "file": "go.sum",
+          "rationale": "Normalize go.sum presence for deterministic builds",
+          "type": "update_config"
+        }
+      ],
+      "root_cause": "offline mock plan for go_mod_tidy"
+    },
+    "plan_policy": {
+      "allowed": true,
+      "danger_reasons": [
+        {
+          "code": "file_count",
+          "message": "Files proposed for change",
+          "weight": 5
+        },
+        {
+          "code": "operation_type",
+          "message": "Operation: update_config",
+          "weight": 8
+        }
+      ],
+      "danger_score": 13,
+      "pr_label": "safe",
+      "violations": []
+    }
+  },
+  "result": {
+    "case_id": "0031",
+    "category": "go_mod_tidy",
+    "classification_category": "unknown",
+    "danger_score": 0,
+    "diff_too_large": false,
+    "expected_category": "go_mod_tidy",
+    "expected_validation_must_pass": true,
+    "forbidden_path_touched": false,
+    "notes": "",
+    "patch_generated": false,
+    "patch_touches_outside_plan": false,
+    "plan_valid": true,
+    "policy_violations": [],
+    "pr_label": "safe",
+    "time_ms": 1,
+    "validation_mode": "mock",
+    "validation_passed": false
+  }
+}

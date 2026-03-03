@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/workspace/app/service.py", line 10, in <module>
+    import redis
+ModuleNotFoundError: No module named 'redis'
+

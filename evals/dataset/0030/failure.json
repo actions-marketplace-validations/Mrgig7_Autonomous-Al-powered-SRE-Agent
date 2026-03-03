@@ -1,0 +1,12 @@
+{
+  "id": "0030",
+  "source": "synthetic",
+  "repo_language": "java",
+  "category": "java_plugin_version_missing",
+  "description": "Maven build fails because a plugin version is missing/unstable",
+  "policy_profile": "default",
+  "created_at": "2026-01-21",
+  "notes": "synthetic java missing plugin version",
+  "public_source_url": null
+}
+

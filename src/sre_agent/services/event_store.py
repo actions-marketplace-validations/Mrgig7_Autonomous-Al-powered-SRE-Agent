@@ -3,8 +3,8 @@
 Handles storing normalized pipeline events to PostgreSQL with
 idempotency guarantees using UPSERT (INSERT ... ON CONFLICT).
 """
+
 import logging
-from typing import Tuple
 from uuid import UUID
 
 from sqlalchemy import select
@@ -31,7 +31,7 @@ class EventStore:
     async def store_event(
         self,
         event: NormalizedPipelineEvent,
-    ) -> Tuple[PipelineEvent, bool]:
+    ) -> tuple[PipelineEvent, bool]:
         """
         Store a normalized event with idempotency handling.
 
@@ -49,14 +49,22 @@ class EventStore:
         # Prepare event data
         event_data = {
             "idempotency_key": event.idempotency_key,
-            "ci_provider": event.ci_provider.value if hasattr(event.ci_provider, "value") else event.ci_provider,
+            "ci_provider": (
+                event.ci_provider.value
+                if hasattr(event.ci_provider, "value")
+                else event.ci_provider
+            ),
             "raw_payload": event.raw_payload,
             "pipeline_id": event.pipeline_id,
             "repo": event.repo,
             "commit_sha": event.commit_sha,
             "branch": event.branch,
             "stage": event.stage,
-            "failure_type": event.failure_type.value if hasattr(event.failure_type, "value") else event.failure_type,
+            "failure_type": (
+                event.failure_type.value
+                if hasattr(event.failure_type, "value")
+                else event.failure_type
+            ),
             "error_message": event.error_message,
             "status": EventStatus.PENDING.value,
             "correlation_id": event.correlation_id,
@@ -118,9 +126,7 @@ class EventStore:
 
     async def get_event(self, idempotency_key: str) -> PipelineEvent | None:
         """Retrieve an event by its idempotency key."""
-        stmt = select(PipelineEvent).where(
-            PipelineEvent.idempotency_key == idempotency_key
-        )
+        stmt = select(PipelineEvent).where(PipelineEvent.idempotency_key == idempotency_key)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 

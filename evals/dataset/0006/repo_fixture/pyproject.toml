@@ -1,0 +1,9 @@
+[tool.poetry]
+name = "demo6"
+version = "0.1.0"
+description = ""
+authors = ["Eval <eval@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+

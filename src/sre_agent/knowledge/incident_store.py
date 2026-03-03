@@ -2,13 +2,11 @@
 
 Stores resolved incidents in the database for future reference.
 """
+
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
-
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from sre_agent.schemas.fix import FixSuggestion
 from sre_agent.schemas.intelligence import RCAResult
@@ -135,7 +133,7 @@ class IncidentStore:
             incident_id,
             status=IncidentStatus.MERGED,
             pr_merged=pr_merged,
-            resolved_at=datetime.utcnow(),
+            resolved_at=datetime.now(UTC),
             resolved_by="auto",
         )
 
@@ -149,7 +147,7 @@ class IncidentStore:
             incident_id,
             status=IncidentStatus.FAILED,
             resolution=resolution,
-            resolved_at=datetime.utcnow(),
+            resolved_at=datetime.now(UTC),
         )
 
     async def list_incidents(
@@ -216,10 +214,7 @@ class IncidentStore:
         limit: int = 10,
     ) -> list[IncidentRecord]:
         """Get successful fixes for learning."""
-        results = [
-            r for r in self._incidents.values()
-            if r.was_successful and r.fix_diff
-        ]
+        results = [r for r in self._incidents.values() if r.was_successful and r.fix_diff]
 
         if category:
             results = [r for r in results if r.category == category]

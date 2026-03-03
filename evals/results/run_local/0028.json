@@ -1,0 +1,117 @@
+{
+  "artifacts": {
+    "classification": {
+      "category": "unknown",
+      "confidence": 0.0,
+      "indicators": [],
+      "reasoning": "No classification patterns matched",
+      "secondary_category": null
+    },
+    "expected": {
+      "allowed_fix_types": [
+        "add_dependency"
+      ],
+      "expected_category": "node_missing_dependency",
+      "success_criteria": {
+        "max_danger_score": 30,
+        "policy_violations_allowed": 0,
+        "validation_must_pass": true
+      }
+    },
+    "failure": {
+      "category": "node_missing_dependency",
+      "created_at": "2026-01-21",
+      "description": "Node install fails; treat as missing dependency for minimal support",
+      "id": "0028",
+      "notes": "synthetic node dependency issue",
+      "policy_profile": "default",
+      "public_source_url": null,
+      "repo_language": "node",
+      "source": "synthetic"
+    },
+    "patch_diff": "--- a/package.json\n+++ b/package.json\n@@ -1,10 +1,11 @@\n {\n+  \"dependencies\": {\n+    \"lodash\": \"^1.0.0\"\n+  },\n   \"name\": \"demo-node-2\",\n-  \"version\": \"1.0.0\",\n   \"private\": true,\n   \"scripts\": {\n     \"test\": \"node -e \\\"console.log('ok')\\\"\"\n   },\n-  \"dependencies\": {}\n+  \"version\": \"1.0.0\"\n }\n-\n",
+    "patch_policy": {
+      "allowed": true,
+      "danger_reasons": [
+        {
+          "code": "file_count",
+          "message": "Files changed",
+          "weight": 5
+        },
+        {
+          "code": "lines_changed",
+          "message": "Lines changed",
+          "weight": 5
+        },
+        {
+          "code": "diff_size",
+          "message": "Diff size",
+          "weight": 3
+        }
+      ],
+      "danger_score": 13,
+      "pr_label": "safe",
+      "violations": []
+    },
+    "plan": {
+      "category": "node_missing_dependency",
+      "confidence": 0.5,
+      "files": [
+        "package.json"
+      ],
+      "operations": [
+        {
+          "details": {
+            "name": "lodash",
+            "spec": "^1.0.0"
+          },
+          "evidence": [
+            "ERR_PNPM_NO_MATCHING_VERSION",
+            "No matching version found for foo-bar@latest"
+          ],
+          "file": "package.json",
+          "rationale": "Add the missing Node dependency referenced by the failure logs",
+          "type": "add_dependency"
+        }
+      ],
+      "root_cause": "offline mock plan for node_missing_dependency"
+    },
+    "plan_policy": {
+      "allowed": true,
+      "danger_reasons": [
+        {
+          "code": "file_count",
+          "message": "Files proposed for change",
+          "weight": 5
+        },
+        {
+          "code": "operation_type",
+          "message": "Operation: add_dependency",
+          "weight": 5
+        }
+      ],
+      "danger_score": 10,
+      "pr_label": "safe",
+      "violations": []
+    }
+  },
+  "result": {
+    "case_id": "0028",
+    "category": "node_missing_dependency",
+    "classification_category": "unknown",
+    "danger_score": 13,
+    "diff_too_large": false,
+    "expected_category": "node_missing_dependency",
+    "expected_validation_must_pass": true,
+    "forbidden_path_touched": false,
+    "notes": "",
+    "patch_generated": true,
+    "patch_touches_outside_plan": false,
+    "plan_valid": true,
+    "policy_violations": [],
+    "pr_label": "safe",
+    "time_ms": 2,
+    "validation_mode": "mock",
+    "validation_passed": true
+  }
+}

@@ -1,0 +1,2 @@
+go: github.com/acme/foo@v1.2.3: missing go.sum entry
+

@@ -2,13 +2,12 @@
 
 Stores embeddings of historical incidents for similarity matching.
 """
+
 import json
 import logging
-import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 
@@ -246,9 +245,7 @@ class IncidentVectorStore:
                     resolution=v.get("resolution"),
                     fix_diff=v.get("fix_diff"),
                     occurred_at=(
-                        datetime.fromisoformat(v["occurred_at"])
-                        if v.get("occurred_at")
-                        else None
+                        datetime.fromisoformat(v["occurred_at"]) if v.get("occurred_at") else None
                     ),
                 )
 

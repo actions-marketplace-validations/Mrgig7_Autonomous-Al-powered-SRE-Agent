@@ -3,11 +3,11 @@
 Analyzes failure context bundles to classify failures into categories
 with confidence scores.
 """
+
 import logging
 import re
-from typing import Callable
 
-from sre_agent.schemas.context import FailureContextBundle, LogLanguage
+from sre_agent.schemas.context import FailureContextBundle
 from sre_agent.schemas.intelligence import Classification, FailureCategory
 
 logger = logging.getLogger(__name__)

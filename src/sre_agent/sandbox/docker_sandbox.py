@@ -2,9 +2,9 @@
 
 Creates isolated Docker containers for safe fix validation.
 """
+
 import asyncio
 import logging
-import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 # Check if docker SDK is available
 try:
     import docker
-    from docker.models.containers import Container
 
     DOCKER_AVAILABLE = True
 except ImportError:
@@ -66,9 +65,7 @@ class DockerSandbox:
     async def _init_client(self) -> None:
         """Initialize Docker client."""
         if not DOCKER_AVAILABLE:
-            raise SandboxError(
-                "Docker SDK not available. Install with: pip install docker"
-            )
+            raise SandboxError("Docker SDK not available. Install with: pip install docker")
 
         try:
             self._client = docker.from_env()
@@ -224,8 +221,8 @@ class DockerSandbox:
         if self._container is None:
             raise SandboxError("Sandbox not created")
 
-        import tarfile
         import io
+        import tarfile
 
         # Create tar archive
         tar_stream = io.BytesIO()

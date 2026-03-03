@@ -1,0 +1,12 @@
+{
+  "id": "0008",
+  "source": "synthetic",
+  "repo_language": "python",
+  "category": "python_missing_dependency",
+  "description": "CLI import fails: typer missing",
+  "policy_profile": "default",
+  "created_at": "2026-01-20",
+  "notes": "synthetic missing typer dependency",
+  "public_source_url": null
+}
+

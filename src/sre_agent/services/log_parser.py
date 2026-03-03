@@ -2,11 +2,10 @@
 
 Supports multiple programming languages and test frameworks.
 """
+
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any
 
 from sre_agent.schemas.context import (
     BuildError,
@@ -47,63 +46,33 @@ class LogParser:
 
     # Python traceback patterns
     PYTHON_TRACEBACK_START = re.compile(r"Traceback \(most recent call last\):")
-    PYTHON_FRAME = re.compile(
-        r'^\s*File "([^"]+)", line (\d+), in (\w+)'
-    )
-    PYTHON_EXCEPTION = re.compile(
-        r"^(\w+(?:\.\w+)*(?:Error|Exception|Warning)): (.+)$"
-    )
+    PYTHON_FRAME = re.compile(r'^\s*File "([^"]+)", line (\d+), in (\w+)')
+    PYTHON_EXCEPTION = re.compile(r"^(\w+(?:\.\w+)*(?:Error|Exception|Warning)): (.+)$")
 
     # JavaScript/Node.js patterns
-    JS_ERROR = re.compile(
-        r"^(\w*Error|\w*Exception|TypeError|ReferenceError|SyntaxError): (.+)$"
-    )
-    JS_STACK_FRAME = re.compile(
-        r"^\s+at (.+?) \(([^:]+):(\d+):(\d+)\)$"
-    )
-    JS_STACK_FRAME_SIMPLE = re.compile(
-        r"^\s+at ([^:]+):(\d+):(\d+)$"
-    )
+    JS_ERROR = re.compile(r"^(\w*Error|\w*Exception|TypeError|ReferenceError|SyntaxError): (.+)$")
+    JS_STACK_FRAME = re.compile(r"^\s+at (.+?) \(([^:]+):(\d+):(\d+)\)$")
+    JS_STACK_FRAME_SIMPLE = re.compile(r"^\s+at ([^:]+):(\d+):(\d+)$")
 
     # Java patterns
-    JAVA_EXCEPTION = re.compile(
-        r"^([\w.]+(?:Exception|Error)): (.+)$"
-    )
-    JAVA_FRAME = re.compile(
-        r"^\s+at ([\w.$]+)\(([\w]+\.java):(\d+)\)$"
-    )
+    JAVA_EXCEPTION = re.compile(r"^([\w.]+(?:Exception|Error)): (.+)$")
+    JAVA_FRAME = re.compile(r"^\s+at ([\w.$]+)\(([\w]+\.java):(\d+)\)$")
     JAVA_CAUSED_BY = re.compile(r"^Caused by: (.+)$")
 
     # Go panic patterns
     GO_PANIC = re.compile(r"^panic: (.+)$")
-    GO_FRAME = re.compile(
-        r"^\s*([^:]+):(\d+) \+0x[\da-f]+$"
-    )
+    GO_FRAME = re.compile(r"^\s*([^:]+):(\d+) \+0x[\da-f]+$")
 
     # Test failure patterns
-    PYTEST_FAILURE = re.compile(
-        r"^(FAILED|ERROR) ([\w/.-]+)::(\w+)(?:::(\w+))?"
-    )
-    JEST_FAILURE = re.compile(
-        r"^\s*●\s+(.+)$"
-    )
-    JUNIT_FAILURE = re.compile(
-        r"^(?:FAILURE|ERROR): (\w+)\(([^)]+)\)$"
-    )
-    GO_TEST_FAIL = re.compile(
-        r"^--- FAIL: (\w+) \(([^)]+)\)$"
-    )
+    PYTEST_FAILURE = re.compile(r"^(FAILED|ERROR) ([\w/.-]+)::(\w+)(?:::(\w+))?")
+    JEST_FAILURE = re.compile(r"^\s*●\s+(.+)$")
+    JUNIT_FAILURE = re.compile(r"^(?:FAILURE|ERROR): (\w+)\(([^)]+)\)$")
+    GO_TEST_FAIL = re.compile(r"^--- FAIL: (\w+) \(([^)]+)\)$")
 
     # Build error patterns
-    GCC_ERROR = re.compile(
-        r"^([^:]+):(\d+):(\d+): (error|warning): (.+)$"
-    )
-    RUST_ERROR = re.compile(
-        r"^error\[([^\]]+)\]: (.+)$"
-    )
-    NPM_ERROR = re.compile(
-        r"^npm ERR! (.+)$"
-    )
+    GCC_ERROR = re.compile(r"^([^:]+):(\d+):(\d+): (error|warning): (.+)$")
+    RUST_ERROR = re.compile(r"^error\[([^\]]+)\]: (.+)$")
+    NPM_ERROR = re.compile(r"^npm ERR! (.+)$")
 
     def parse(self, content: str) -> ParsedLogResult:
         """
@@ -169,11 +138,13 @@ class LogParser:
                     line = lines[i]
                     frame_match = self.PYTHON_FRAME.match(line)
                     if frame_match:
-                        frames.append(StackFrame(
-                            file=frame_match.group(1),
-                            line=int(frame_match.group(2)),
-                            function=frame_match.group(3),
-                        ))
+                        frames.append(
+                            StackFrame(
+                                file=frame_match.group(1),
+                                line=int(frame_match.group(2)),
+                                function=frame_match.group(3),
+                            )
+                        )
                         trace_lines.append(line)
                         # Next line is usually the code
                         if i + 1 < len(lines) and lines[i + 1].startswith("    "):
@@ -184,14 +155,16 @@ class LogParser:
                         trace_lines.append(line)
                         exc_match = self.PYTHON_EXCEPTION.match(line)
                         if exc_match:
-                            traces.append(StackTrace(
-                                language=LogLanguage.PYTHON,
-                                exception_type=exc_match.group(1),
-                                message=exc_match.group(2),
-                                frames=frames,
-                                raw_text="\n".join(trace_lines),
-                                is_root_cause=len(traces) == 0,
-                            ))
+                            traces.append(
+                                StackTrace(
+                                    language=LogLanguage.PYTHON,
+                                    exception_type=exc_match.group(1),
+                                    message=exc_match.group(2),
+                                    frames=frames,
+                                    raw_text="\n".join(trace_lines),
+                                    is_root_cause=len(traces) == 0,
+                                )
+                            )
                         break
                     elif line.strip() == "" or not line.startswith(" "):
                         break
@@ -223,19 +196,23 @@ class LogParser:
                     simple_match = self.JS_STACK_FRAME_SIMPLE.match(line)
 
                     if frame_match:
-                        frames.append(StackFrame(
-                            function=frame_match.group(1),
-                            file=frame_match.group(2),
-                            line=int(frame_match.group(3)),
-                            column=int(frame_match.group(4)),
-                        ))
+                        frames.append(
+                            StackFrame(
+                                function=frame_match.group(1),
+                                file=frame_match.group(2),
+                                line=int(frame_match.group(3)),
+                                column=int(frame_match.group(4)),
+                            )
+                        )
                         trace_lines.append(line)
                     elif simple_match:
-                        frames.append(StackFrame(
-                            file=simple_match.group(1),
-                            line=int(simple_match.group(2)),
-                            column=int(simple_match.group(3)),
-                        ))
+                        frames.append(
+                            StackFrame(
+                                file=simple_match.group(1),
+                                line=int(simple_match.group(2)),
+                                column=int(simple_match.group(3)),
+                            )
+                        )
                         trace_lines.append(line)
                     elif line.strip().startswith("at "):
                         trace_lines.append(line)
@@ -244,14 +221,16 @@ class LogParser:
                     i += 1
 
                 if frames:
-                    traces.append(StackTrace(
-                        language=LogLanguage.JAVASCRIPT,
-                        exception_type=exception_type,
-                        message=message,
-                        frames=frames,
-                        raw_text="\n".join(trace_lines),
-                        is_root_cause=len(traces) == 0,
-                    ))
+                    traces.append(
+                        StackTrace(
+                            language=LogLanguage.JAVASCRIPT,
+                            exception_type=exception_type,
+                            message=message,
+                            frames=frames,
+                            raw_text="\n".join(trace_lines),
+                            is_root_cause=len(traces) == 0,
+                        )
+                    )
                 continue
             i += 1
 
@@ -279,22 +258,26 @@ class LogParser:
                     if frame_match:
                         full_method = frame_match.group(1)
                         parts = full_method.rsplit(".", 1)
-                        frames.append(StackFrame(
-                            module=parts[0] if len(parts) > 1 else None,
-                            function=parts[-1],
-                            file=frame_match.group(2),
-                            line=int(frame_match.group(3)),
-                        ))
+                        frames.append(
+                            StackFrame(
+                                module=parts[0] if len(parts) > 1 else None,
+                                function=parts[-1],
+                                file=frame_match.group(2),
+                                line=int(frame_match.group(3)),
+                            )
+                        )
                         trace_lines.append(line)
                     elif caused_by:
                         # New exception in chain, save current and start new
-                        traces.append(StackTrace(
-                            language=LogLanguage.JAVA,
-                            exception_type=exception_type,
-                            message=message,
-                            frames=frames,
-                            raw_text="\n".join(trace_lines),
-                        ))
+                        traces.append(
+                            StackTrace(
+                                language=LogLanguage.JAVA,
+                                exception_type=exception_type,
+                                message=message,
+                                frames=frames,
+                                raw_text="\n".join(trace_lines),
+                            )
+                        )
                         # Start new trace
                         frames = []
                         trace_lines = [line]
@@ -307,14 +290,16 @@ class LogParser:
                     i += 1
 
                 if frames:
-                    traces.append(StackTrace(
-                        language=LogLanguage.JAVA,
-                        exception_type=exception_type,
-                        message=message,
-                        frames=frames,
-                        raw_text="\n".join(trace_lines),
-                        is_root_cause=True,  # Last in chain is root cause
-                    ))
+                    traces.append(
+                        StackTrace(
+                            language=LogLanguage.JAVA,
+                            exception_type=exception_type,
+                            message=message,
+                            frames=frames,
+                            raw_text="\n".join(trace_lines),
+                            is_root_cause=True,  # Last in chain is root cause
+                        )
+                    )
                 continue
             i += 1
 
@@ -340,24 +325,28 @@ class LogParser:
                     if frame_match or "goroutine" in line.lower():
                         trace_lines.append(line)
                         if frame_match:
-                            frames.append(StackFrame(
-                                file=frame_match.group(1),
-                                line=int(frame_match.group(2)),
-                            ))
+                            frames.append(
+                                StackFrame(
+                                    file=frame_match.group(1),
+                                    line=int(frame_match.group(2)),
+                                )
+                            )
                     elif line.strip() == "":
                         break
                     else:
                         trace_lines.append(line)
                     i += 1
 
-                traces.append(StackTrace(
-                    language=LogLanguage.GO,
-                    exception_type="panic",
-                    message=message,
-                    frames=frames,
-                    raw_text="\n".join(trace_lines),
-                    is_root_cause=True,
-                ))
+                traces.append(
+                    StackTrace(
+                        language=LogLanguage.GO,
+                        exception_type="panic",
+                        message=message,
+                        frames=frames,
+                        raw_text="\n".join(trace_lines),
+                        is_root_cause=True,
+                    )
+                )
                 continue
             i += 1
 
@@ -371,32 +360,38 @@ class LogParser:
             # pytest
             pytest_match = self.PYTEST_FAILURE.match(line)
             if pytest_match:
-                failures.append(TestFailure(
-                    test_file=pytest_match.group(2).split("::")[0],
-                    test_class=pytest_match.group(3),
-                    test_name=pytest_match.group(4) or pytest_match.group(3),
-                    error_message=self._get_context(lines, i, after=5),
-                ))
+                failures.append(
+                    TestFailure(
+                        test_file=pytest_match.group(2).split("::")[0],
+                        test_class=pytest_match.group(3),
+                        test_name=pytest_match.group(4) or pytest_match.group(3),
+                        error_message=self._get_context(lines, i, after=5),
+                    )
+                )
                 continue
 
             # Go test
             go_match = self.GO_TEST_FAIL.match(line)
             if go_match:
-                failures.append(TestFailure(
-                    test_name=go_match.group(1),
-                    error_message=self._get_context(lines, i, after=5),
-                    duration_seconds=self._parse_duration(go_match.group(2)),
-                ))
+                failures.append(
+                    TestFailure(
+                        test_name=go_match.group(1),
+                        error_message=self._get_context(lines, i, after=5),
+                        duration_seconds=self._parse_duration(go_match.group(2)),
+                    )
+                )
                 continue
 
             # JUnit
             junit_match = self.JUNIT_FAILURE.match(line)
             if junit_match:
-                failures.append(TestFailure(
-                    test_name=junit_match.group(1),
-                    test_class=junit_match.group(2),
-                    error_message=self._get_context(lines, i, after=5),
-                ))
+                failures.append(
+                    TestFailure(
+                        test_name=junit_match.group(1),
+                        test_class=junit_match.group(2),
+                        error_message=self._get_context(lines, i, after=5),
+                    )
+                )
                 continue
 
         return failures
@@ -409,23 +404,29 @@ class LogParser:
             # GCC/Clang style
             gcc_match = self.GCC_ERROR.match(line)
             if gcc_match:
-                errors.append(BuildError(
-                    file=gcc_match.group(1),
-                    line=int(gcc_match.group(2)),
-                    column=int(gcc_match.group(3)),
-                    severity=Severity.ERROR if gcc_match.group(4) == "error" else Severity.WARNING,
-                    message=gcc_match.group(5),
-                ))
+                errors.append(
+                    BuildError(
+                        file=gcc_match.group(1),
+                        line=int(gcc_match.group(2)),
+                        column=int(gcc_match.group(3)),
+                        severity=(
+                            Severity.ERROR if gcc_match.group(4) == "error" else Severity.WARNING
+                        ),
+                        message=gcc_match.group(5),
+                    )
+                )
                 continue
 
             # Rust
             rust_match = self.RUST_ERROR.match(line)
             if rust_match:
-                errors.append(BuildError(
-                    file="",  # Rust errors usually span multiple lines
-                    error_code=rust_match.group(1),
-                    message=rust_match.group(2),
-                ))
+                errors.append(
+                    BuildError(
+                        file="",  # Rust errors usually span multiple lines
+                        error_code=rust_match.group(1),
+                        message=rust_match.group(2),
+                    )
+                )
                 continue
 
         return errors
@@ -442,15 +443,18 @@ class LogParser:
         ]
 
         for i, line in enumerate(lines):
+            normalized = re.sub(r"^\[[^\]]+\]\s*", "", line).strip()
             for pattern, severity in error_patterns:
-                match = re.match(pattern, line, re.IGNORECASE)
+                match = re.match(pattern, normalized, re.IGNORECASE)
                 if match:
-                    errors.append(ErrorInfo(
-                        error_type="generic",
-                        message=match.group(1).strip(),
-                        severity=severity,
-                        context_lines=self._get_context_lines(lines, i, before=2, after=2),
-                    ))
+                    errors.append(
+                        ErrorInfo(
+                            error_type="generic",
+                            message=match.group(1).strip(),
+                            severity=severity,
+                            context_lines=self._get_context_lines(lines, i, before=2, after=2),
+                        )
+                    )
                     break
 
         return errors
@@ -503,7 +507,7 @@ class LogParser:
         summary_parts.extend(lines[-20:])
 
         # Quick stats
-        summary_parts.append(f"\n=== Stats ===")
+        summary_parts.append("\n=== Stats ===")
         summary_parts.append(f"Total lines: {len(lines)}")
         summary_parts.append(f"Errors found: {len(errors)}")
         summary_parts.append(f"Stack traces: {len(stack_traces)}")

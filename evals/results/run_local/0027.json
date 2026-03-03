@@ -1,0 +1,116 @@
+{
+  "artifacts": {
+    "classification": {
+      "category": "unknown",
+      "confidence": 0.0,
+      "indicators": [],
+      "reasoning": "No classification patterns matched",
+      "secondary_category": null
+    },
+    "expected": {
+      "allowed_fix_types": [
+        "update_config"
+      ],
+      "expected_category": "node_lockfile_mismatch",
+      "success_criteria": {
+        "max_danger_score": 30,
+        "policy_violations_allowed": 0,
+        "validation_must_pass": true
+      }
+    },
+    "failure": {
+      "category": "node_lockfile_mismatch",
+      "created_at": "2026-01-21",
+      "description": "npm ci fails because package-lock is out of date",
+      "id": "0027",
+      "notes": "synthetic node lockfile mismatch",
+      "policy_profile": "default",
+      "public_source_url": null,
+      "repo_language": "node",
+      "source": "synthetic"
+    },
+    "patch_diff": "--- a/package-lock.json\n+++ b/package-lock.json\n@@ -1,13 +1,12 @@\n {\n+  \"dependencies\": {},\n+  \"lockfileVersion\": 2,\n   \"name\": \"demo-node\",\n-  \"lockfileVersion\": 1,\n-  \"requires\": true,\n   \"packages\": {\n     \"\": {\n-      \"name\": \"demo-node\",\n-      \"dependencies\": {}\n+      \"dependencies\": {},\n+      \"name\": \"demo-node\"\n     }\n   },\n-  \"dependencies\": {}\n+  \"requires\": true\n }\n-\n",
+    "patch_policy": {
+      "allowed": true,
+      "danger_reasons": [
+        {
+          "code": "file_count",
+          "message": "Files changed",
+          "weight": 5
+        },
+        {
+          "code": "lines_changed",
+          "message": "Lines changed",
+          "weight": 5
+        },
+        {
+          "code": "diff_size",
+          "message": "Diff size",
+          "weight": 3
+        }
+      ],
+      "danger_score": 13,
+      "pr_label": "safe",
+      "violations": []
+    },
+    "plan": {
+      "category": "node_lockfile_mismatch",
+      "confidence": 0.5,
+      "files": [
+        "package-lock.json"
+      ],
+      "operations": [
+        {
+          "details": {
+            "lockfile_version": 2
+          },
+          "evidence": [
+            "npm ERR! code EUSAGE",
+            "npm ERR! package-lock.json is out of date, please run npm install"
+          ],
+          "file": "package-lock.json",
+          "rationale": "Bring package-lock.json into a supported lockfileVersion",
+          "type": "update_config"
+        }
+      ],
+      "root_cause": "offline mock plan for node_lockfile_mismatch"
+    },
+    "plan_policy": {
+      "allowed": true,
+      "danger_reasons": [
+        {
+          "code": "file_count",
+          "message": "Files proposed for change",
+          "weight": 5
+        },
+        {
+          "code": "operation_type",
+          "message": "Operation: update_config",
+          "weight": 8
+        }
+      ],
+      "danger_score": 13,
+      "pr_label": "safe",
+      "violations": []
+    }
+  },
+  "result": {
+    "case_id": "0027",
+    "category": "node_lockfile_mismatch",
+    "classification_category": "unknown",
+    "danger_score": 13,
+    "diff_too_large": false,
+    "expected_category": "node_lockfile_mismatch",
+    "expected_validation_must_pass": true,
+    "forbidden_path_touched": false,
+    "notes": "",
+    "patch_generated": true,
+    "patch_touches_outside_plan": false,
+    "plan_valid": true,
+    "policy_violations": [],
+    "pr_label": "safe",
+    "time_ms": 5,
+    "validation_mode": "mock",
+    "validation_passed": true
+  }
+}

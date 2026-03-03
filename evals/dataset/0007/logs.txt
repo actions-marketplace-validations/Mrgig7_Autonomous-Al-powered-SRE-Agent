@@ -1,0 +1,8 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.8, pytest-7.4.4
+
+Traceback (most recent call last):
+  File "/workspace/tests/test_http.py", line 1, in <module>
+    import aiohttp
+ModuleNotFoundError: No module named 'aiohttp'
+

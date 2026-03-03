@@ -5,9 +5,9 @@ Production-grade database configuration with:
 - Health checks and pool monitoring
 - Context managers for proper session handling
 """
-from collections.abc import AsyncGenerator
+
+from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -52,7 +52,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 @asynccontextmanager
 async def get_async_session() -> AsyncIterator[AsyncSession]:
     """Context manager for database sessions.
-    
+
     Usage:
         async with get_async_session() as session:
             result = await session.execute(query)
@@ -70,7 +70,7 @@ async def get_async_session() -> AsyncIterator[AsyncSession]:
 async def get_pool_status() -> dict:
     """Get connection pool status for monitoring."""
     pool = engine.pool
-    
+
     return {
         "pool_size": pool.size(),
         "checked_in": pool.checkedin(),
@@ -82,4 +82,3 @@ async def get_pool_status() -> dict:
 async def close_database() -> None:
     """Close database connections."""
     await engine.dispose()
-

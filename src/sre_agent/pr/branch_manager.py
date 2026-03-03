@@ -2,11 +2,11 @@
 
 Handles branch creation, committing, and pushing fixes.
 """
+
 import logging
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any
 
 logger = logging.getLogger(__name__)
 

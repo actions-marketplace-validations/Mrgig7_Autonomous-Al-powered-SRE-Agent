@@ -1,0 +1,76 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "expr": "sum(rate(sre_agent_pipeline_runs_total{outcome=\"success\"}[15m]))", "legendFormat": "success", "refId": "A" },
+        { "expr": "sum(rate(sre_agent_pipeline_runs_total{outcome=\"fail\"}[15m]))", "legendFormat": "fail", "refId": "B" },
+        { "expr": "sum(rate(sre_agent_pipeline_runs_total{outcome=\"blocked\"}[15m]))", "legendFormat": "blocked", "refId": "C" },
+        { "expr": "sum(rate(sre_agent_pipeline_runs_total{outcome=\"skipped\"}[15m]))", "legendFormat": "skipped", "refId": "D" }
+      ],
+      "title": "Pipeline Outcomes (rate)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "expr": "sum(rate(sre_agent_pipeline_retry_total[15m])) by (reason)", "legendFormat": "{{reason}}", "refId": "A" }
+      ],
+      "title": "Retries by Reason (rate)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 8 },
+      "id": 3,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(sre_agent_pipeline_stage_duration_seconds_bucket[15m])) by (le, stage))",
+          "legendFormat": "{{stage}} p95",
+          "refId": "A"
+        }
+      ],
+      "title": "Stage Duration p95 (seconds)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 },
+      "id": 4,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "expr": "sum(rate(sre_agent_pipeline_loop_blocked_total[15m])) by (reason)", "legendFormat": "{{reason}}", "refId": "A" }
+      ],
+      "title": "Loop Blocks (rate)",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 39,
+  "refresh": "10s",
+  "tags": ["sre-agent"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Pipeline Overview",
+  "uid": "sre-agent-pipeline-overview",
+  "version": 1
+}
+
