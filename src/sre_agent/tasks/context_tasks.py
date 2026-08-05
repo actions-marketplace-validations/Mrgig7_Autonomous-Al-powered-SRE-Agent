@@ -180,9 +180,8 @@ async def _build_context_async(
         builder = ContextBuilder()
         context = await builder.build_context(event)
 
-        # Store context bundle
-        # TODO: Store in MinIO or PostgreSQL JSONB column
-        # For MVP, we log the summary
+        # Note: context_json is persisted below via FixPipelineRunStore.create_run()
+        # together with rca_json once analysis completes.
 
         logger.info(
             "Context building completed",
@@ -291,7 +290,12 @@ def store_context_bundle(
     context_data: dict,
 ) -> dict:
     """
-    Store a context bundle for later retrieval.
+    Persist a context bundle on the corresponding FixPipelineRun row.
+
+    The main ``build_failure_context`` task already persists context via
+    :class:`FixPipelineRunStore.create_run`. This standalone task is exposed
+    for callers (CLI tools, replay scripts, tests) that need to attach a
+    pre-built context bundle to an existing run.
 
     Args:
         event_id: Event ID
@@ -300,16 +304,31 @@ def store_context_bundle(
     Returns:
         Storage confirmation
     """
+    import asyncio
+    from uuid import UUID
+
+    from sre_agent.fix_pipeline.store import FixPipelineRunStore
+
     logger.info(
         "Storing context bundle",
         extra={"event_id": event_id, "task_id": self.request.id},
     )
 
-    # TODO: Implement storage in MinIO or PostgreSQL
-    # For MVP, this is a placeholder
+    async def _persist() -> bool:
+        try:
+            event_uuid = UUID(event_id)
+        except (ValueError, TypeError):
+            logger.error("Invalid event_id for context storage", extra={"event_id": event_id})
+            return False
+        store = FixPipelineRunStore()
+        # create_run is idempotent: if a run already exists for this event it
+        # merges fields rather than failing.
+        await store.create_run(event_id=event_uuid, context_json=context_data)
+        return True
 
+    stored = asyncio.run(_persist())
     return {
         "event_id": event_id,
-        "stored": True,
-        "storage_location": "database",  # Future: MinIO path
+        "stored": stored,
+        "storage_location": "fix_pipeline_runs.context_json",
     }

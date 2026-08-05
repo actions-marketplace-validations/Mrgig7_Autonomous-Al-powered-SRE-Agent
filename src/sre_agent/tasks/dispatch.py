@@ -211,18 +211,26 @@ def process_pipeline_event(self, event_id: str, correlation_id: str | None = Non
 )
 def update_event_status(self, event_id: str, status: str) -> dict:
     """
-    Update the processing status of an event.
+    Update the processing status of a pipeline event.
 
-    This is a helper task for async status updates.
-    Can be chained with other tasks.
+    Persists the new status to the ``pipeline_events`` table and returns
+    a confirmation dict. Designed to be chained from other Celery tasks.
 
     Args:
-        event_id: UUID of the event
-        status: New status string
+        event_id: UUID string of the event
+        status:   New status string (validated against ``EventStatus``)
 
     Returns:
-        Dict confirming the update
+        Dict confirming the update.
     """
+    import asyncio
+    from uuid import UUID
+
+    from sqlalchemy import select
+
+    from sre_agent.database import get_async_session
+    from sre_agent.models.events import EventStatus, PipelineEvent
+
     logger.info(
         "Updating event status",
         extra={
@@ -232,11 +240,41 @@ def update_event_status(self, event_id: str, status: str) -> dict:
         },
     )
 
-    # TODO: Actually update database status
-    # For MVP, just log and return
+    # Normalise / validate status
+    try:
+        normalized_status = EventStatus(status).value
+    except ValueError:
+        # Accept the raw string for forward-compatibility but log a warning
+        logger.warning(
+            "Unknown event status value, persisting verbatim",
+            extra={"event_id": event_id, "status": status},
+        )
+        normalized_status = status
+
+    async def _apply() -> bool:
+        try:
+            uuid_value = UUID(event_id)
+        except (ValueError, TypeError):
+            logger.error("Invalid event_id for status update", extra={"event_id": event_id})
+            return False
+        async with get_async_session() as session:
+            row = (
+                await session.execute(select(PipelineEvent).where(PipelineEvent.id == uuid_value))
+            ).scalar_one_or_none()
+            if row is None:
+                logger.warning(
+                    "Pipeline event not found for status update",
+                    extra={"event_id": event_id},
+                )
+                return False
+            row.status = normalized_status
+            await session.commit()
+        return True
+
+    updated = asyncio.run(_apply())
 
     return {
         "event_id": event_id,
-        "status": status,
-        "updated": True,
+        "status": normalized_status,
+        "updated": updated,
     }

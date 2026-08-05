@@ -1,5 +1,6 @@
 """Test configuration and fixtures."""
 
+import asyncio
 from collections.abc import Generator
 from typing import Any
 from unittest.mock import MagicMock
@@ -7,11 +8,23 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 from sre_agent.config import get_settings
+from sre_agent.database import reset_engine
 from sre_agent.main import create_app
 
 # Use in-memory SQLite for tests (requires aiosqlite)
 # For full PostgreSQL tests, use testcontainers
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+
+@pytest.fixture(autouse=True)
+def _use_test_database(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+    """Point the application at an isolated in-memory SQLite per test."""
+    monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
+    get_settings.cache_clear()
+    asyncio.run(reset_engine())
+    yield
+    get_settings.cache_clear()
+    asyncio.run(reset_engine())
 
 
 @pytest.fixture

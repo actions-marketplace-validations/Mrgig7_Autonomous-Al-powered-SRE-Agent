@@ -1,0 +1,15 @@
+# Local dev artifacts
+node_modules
+dist
+.vite
+.cache
+
+# Editor
+.vscode
+.idea
+*.log
+
+# Env
+.env
+.env.local
+.env.*.local

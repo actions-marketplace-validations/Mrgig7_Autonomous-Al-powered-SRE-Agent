@@ -37,6 +37,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY src/ ./src/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
+COPY config/ ./config/
+COPY docker/entrypoint.sh /usr/local/bin/sre-entrypoint.sh
+RUN chmod +x /usr/local/bin/sre-entrypoint.sh
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash appuser \
@@ -48,11 +51,12 @@ ENV PYTHONPATH=/app/src
 ENV PYTHONUNBUFFERED=1
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Expose port
 EXPOSE 8000
 
-# Run the application
+# Run the application via entrypoint (which runs alembic upgrade first)
+ENTRYPOINT ["sre-entrypoint.sh"]
 CMD ["uvicorn", "sre_agent.main:app", "--host", "0.0.0.0", "--port", "8000"]

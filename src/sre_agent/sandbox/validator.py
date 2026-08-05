@@ -361,45 +361,66 @@ async def validate_fix_for_event(
     fix_id: str,
 ) -> ValidationResult:
     """
-    Validate a fix for a stored event.
+    Validate the persisted fix attached to an event's most recent pipeline run.
 
-    Loads event and fix from database and runs validation.
-
-    Args:
-        event_id: Pipeline event ID
-        fix_id: Fix ID to validate
-
-    Returns:
-        ValidationResult
+    Loads the event, locates its ``FixPipelineRun`` (where the orchestrator
+    persists the generated patch), and invokes the sandbox validator
+    end-to-end using a directly-constructed ``ValidationRequest``.
     """
     from uuid import UUID
 
     from sqlalchemy import select
 
-    from sre_agent.database import async_session_factory
+    from sre_agent.database import get_async_session
+    from sre_agent.fix_pipeline.store import FixPipelineRunStore
     from sre_agent.models.events import PipelineEvent
 
-    async with async_session_factory() as session:
-        # Load event
-        stmt = select(PipelineEvent).where(PipelineEvent.id == UUID(event_id))
-        result = await session.execute(stmt)
-        event = result.scalar_one_or_none()
+    try:
+        event_uuid = UUID(event_id)
+    except (ValueError, TypeError):
+        return ValidationResult(
+            fix_id=fix_id,
+            event_id=UUID(int=0),
+            validation_id="error",
+            status=ValidationStatus.ERROR,
+            error_message="Invalid event_id",
+        )
+
+    async with get_async_session() as session:
+        event = (
+            await session.execute(select(PipelineEvent).where(PipelineEvent.id == event_uuid))
+        ).scalar_one_or_none()
 
         if event is None:
             return ValidationResult(
                 fix_id=fix_id,
-                event_id=UUID(event_id),
+                event_id=event_uuid,
                 validation_id="error",
                 status=ValidationStatus.ERROR,
                 error_message="Event not found",
             )
 
-        # TODO: Load fix from database
-        # For now, return error
+    run = await FixPipelineRunStore().get_run_by_event_id(event_uuid)
+    if run is None or not run.patch_diff:
         return ValidationResult(
             fix_id=fix_id,
-            event_id=UUID(event_id),
-            validation_id="not_implemented",
+            event_id=event_uuid,
+            validation_id="error",
             status=ValidationStatus.ERROR,
-            error_message="Fix storage not yet implemented",
+            error_message="No persisted fix patch for this event",
         )
+
+    repo_url = (event.raw_payload or {}).get("repository", {}).get("clone_url") or (
+        f"https://github.com/{event.repo}.git"
+    )
+
+    request = ValidationRequest(
+        fix_id=fix_id,
+        event_id=event_uuid,
+        repo_url=repo_url,
+        branch=event.branch or "main",
+        commit_sha=event.commit_sha or "HEAD",
+        diff=run.patch_diff,
+        config=SandboxConfig(),
+    )
+    return await ValidationOrchestrator().validate(request)

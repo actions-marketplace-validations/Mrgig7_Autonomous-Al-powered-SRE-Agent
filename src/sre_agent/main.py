@@ -107,12 +107,22 @@ def create_app() -> FastAPI:
     )
 
     # CORS middleware
+    cors_origins = settings.cors_origins
+    cors_allow_credentials = settings.cors_allow_credentials
+    # CORS spec: cannot combine wildcard origin with credentials.
+    if cors_origins == ["*"] and cors_allow_credentials:
+        logger.warning(
+            "CORS_ALLOWED_ORIGINS='*' with credentials is invalid; "
+            "disabling credentials for wildcard origin."
+        )
+        cors_allow_credentials = False
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"] if not settings.is_production else [],
-        allow_credentials=True,
+        allow_origins=cors_origins,
+        allow_credentials=cors_allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["X-Correlation-Id"],
     )
 
     from sre_agent.observability.middleware import (

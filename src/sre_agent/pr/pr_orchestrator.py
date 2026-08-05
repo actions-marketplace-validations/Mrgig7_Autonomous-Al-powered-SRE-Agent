@@ -249,24 +249,148 @@ async def create_pr_for_event(
     fix_id: str,
 ) -> PRResult:
     """
-    Create a PR for a stored event and fix.
+    Create a PR for the persisted fix attached to an event's pipeline run.
 
-    Convenience function that loads data and orchestrates PR creation.
-
-    Args:
-        event_id: Pipeline event ID
-        fix_id: Fix ID
-
-    Returns:
-        PRResult
+    Loads the persisted ``FixPipelineRun`` (which contains ``patch_diff``,
+    ``plan_json``, ``rca_json``, and ``validation_json``), rehydrates the
+    minimum schemas the orchestrator needs, and executes
+    :meth:`PROrchestrator.create_pr_for_fix`.
     """
-    # TODO: Load fix, RCA result, and validation from storage
-    # For now, return error indicating storage not implemented
-    return PRResult(
-        status=PRStatus.FAILED,
-        branch_name="",
-        base_branch="main",
+    from sqlalchemy import select
+
+    from sre_agent.database import get_async_session
+    from sre_agent.fix_pipeline.store import FixPipelineRunStore
+    from sre_agent.models.events import PipelineEvent
+    from sre_agent.schemas.fix import FileDiff, GuardrailStatus
+    from sre_agent.schemas.intelligence import (
+        Classification,
+        FailureCategory,
+        RCAHypothesis,
+        RCAResult,
+    )
+    from sre_agent.schemas.validation import ValidationResult
+
+    try:
+        event_uuid = UUID(event_id)
+    except (ValueError, TypeError):
+        return PRResult(
+            status=PRStatus.FAILED,
+            branch_name="",
+            base_branch="main",
+            fix_id=fix_id,
+            event_id=UUID(int=0),
+            error_message="Invalid event_id",
+        )
+
+    async with get_async_session() as session:
+        event = (
+            await session.execute(select(PipelineEvent).where(PipelineEvent.id == event_uuid))
+        ).scalar_one_or_none()
+
+    if event is None:
+        return PRResult(
+            status=PRStatus.FAILED,
+            branch_name="",
+            base_branch="main",
+            fix_id=fix_id,
+            event_id=event_uuid,
+            error_message="Event not found",
+        )
+
+    run = await FixPipelineRunStore().get_run_by_event_id(event_uuid)
+    if run is None or not run.patch_diff:
+        return PRResult(
+            status=PRStatus.FAILED,
+            branch_name="",
+            base_branch=event.branch or "main",
+            fix_id=fix_id,
+            event_id=event_uuid,
+            error_message="No persisted fix patch for this event",
+        )
+
+    # Rehydrate the minimal RCAResult required by the orchestrator
+    rca_json = run.rca_json or {}
+    try:
+        classification_data = rca_json.get("classification") or {}
+        classification = (
+            Classification(**classification_data)
+            if classification_data
+            else Classification(
+                category=FailureCategory.UNKNOWN,
+                confidence=0.0,
+                reasoning="No persisted classification",
+            )
+        )
+        hypothesis_data = rca_json.get("primary_hypothesis") or {}
+        hypothesis = (
+            RCAHypothesis(**hypothesis_data)
+            if hypothesis_data
+            else RCAHypothesis(
+                description="No persisted hypothesis",
+                confidence=0.0,
+                evidence=[],
+            )
+        )
+        rca_result = RCAResult(
+            event_id=event_uuid,
+            classification=classification,
+            primary_hypothesis=hypothesis,
+        )
+    except Exception:  # noqa: BLE001 - schemas may evolve; fall back safely
+        rca_result = RCAResult(
+            event_id=event_uuid,
+            classification=Classification(
+                category=FailureCategory.UNKNOWN,
+                confidence=0.0,
+                reasoning="Failed to rehydrate persisted RCA",
+            ),
+            primary_hypothesis=RCAHypothesis(
+                description="(unavailable)",
+                confidence=0.0,
+                evidence=[],
+            ),
+        )
+
+    validation: ValidationResult | None = None
+    if run.validation_json:
+        try:
+            validation = ValidationResult(**run.validation_json)
+        except Exception:  # noqa: BLE001
+            validation = None
+
+    # Build a minimal FixSuggestion from persisted data. ``full_diff`` is a
+    # computed property so we wrap the persisted patch into a single FileDiff.
+    plan = run.plan_json or {}
+    target_files = list(plan.get("target_files") or [])
+    summary = str(plan.get("summary") or "Auto-generated fix")
+    explanation = str(plan.get("explanation") or rca_result.primary_hypothesis.description)
+
+    fix = FixSuggestion(
         fix_id=fix_id,
-        event_id=UUID(event_id),
-        error_message="Fix storage not yet implemented",
+        event_id=event_uuid,
+        diffs=[
+            FileDiff(
+                filename=target_files[0] if target_files else "patch.diff",
+                diff=run.patch_diff,
+            )
+        ],
+        explanation=explanation,
+        summary=summary,
+        target_files=target_files,
+        confidence=float(rca_result.primary_hypothesis.confidence or 0.0),
+        guardrail_status=GuardrailStatus(passed=True),
+        model_used=str(plan.get("model_used") or "persisted"),
+    )
+
+    repo_url = (event.raw_payload or {}).get("repository", {}).get("clone_url") or (
+        f"https://github.com/{event.repo}.git"
+    )
+
+    return await PROrchestrator().create_pr_for_fix(
+        fix=fix,
+        rca_result=rca_result,
+        validation=validation,
+        repo_url=repo_url,
+        base_branch=event.branch or "main",
+        run_id=run.id,
     )

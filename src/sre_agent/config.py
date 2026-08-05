@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_prefix: str = "/api/v1"
 
+    # CORS — comma-separated origin list. Use "*" only when allow_credentials is off.
+    # Defaults cover the local Vite dev server and the dockerised frontend.
+    cors_allowed_origins: str = (
+        "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,"
+        "http://127.0.0.1:5173,http://localhost:8000"
+    )
+    cors_allow_credentials: bool = True
+
     # GitHub Webhook
     github_webhook_secret: str = ""
 
@@ -216,6 +224,11 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """Check if running in production mode."""
         return self.environment == "prod"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Parsed CORS origin list (empty entries dropped)."""
+        return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]
 
     @property
     def celery_broker_url(self) -> str:

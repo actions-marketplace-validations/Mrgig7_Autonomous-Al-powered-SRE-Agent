@@ -1,9 +1,16 @@
 version: "3.8"
 
 # SRE Agent - Quick Start Docker Compose
-# Usage: docker-compose up -d
-# Dashboard: http://localhost:8000
-# Docs: http://localhost:8000/docs
+# Usage:
+#   docker-compose up -d                            # API + worker + observability
+#   docker-compose --profile with-frontend up -d    # also start the React dashboard on :3000
+#   docker-compose --profile local-llm up -d        # also start Ollama on :11434
+#
+# API:        http://localhost:8000
+# API Docs:   http://localhost:8000/docs
+# Dashboard:  http://localhost:3000   (requires --profile with-frontend)
+# Grafana:    http://localhost:3001   (admin / admin)
+# Prometheus: http://localhost:9090
 
 services:
   sandbox_image:
@@ -106,9 +113,12 @@ services:
       - ARTIFACTS_DIR=${ARTIFACTS_DIR:-/app/artifacts}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     depends_on:
-      - api
-      - redis
-      - sandbox_image
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      sandbox_image:
+        condition: service_completed_successfully
     user: root
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
